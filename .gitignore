@@ -1,0 +1,20 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+*.egg-info/
+
+# Agents & logs
+.agents/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp

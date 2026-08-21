@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>NETA_OS - Performance Monitoring HUD</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Geist:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#7000ff",
+                        "on-primary-fixed-variant": "#004f58",
+                        "on-tertiary-container": "#aa2600",
+                        "inverse-primary": "#006875",
+                        "on-primary-fixed": "#001f24",
+                        "inverse-surface": "#dee3ea",
+                        "secondary": "#d1bcff",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "surface-container-low": "#171c21",
+                        "on-tertiary-fixed-variant": "#8a1d00",
+                        "surface": "#0f1419",
+                        "surface-container-lowest": "#0a0f14",
+                        "error-container": "#93000a",
+                        "surface-container-high": "#252a30",
+                        "on-primary-container": "#00626e",
+                        "error": "#ffb4ab",
+                        "on-primary": "#00363d",
+                        "on-secondary-container": "#ddcdff",
+                        "tertiary-container": "#ffc2b3",
+                        "on-secondary": "#3c0090",
+                        "secondary-fixed": "#e9ddff",
+                        "surface-container": "#1b2025",
+                        "on-secondary-fixed": "#23005b",
+                        "on-tertiary-fixed": "#3c0700",
+                        "on-surface": "#dee3ea",
+                        "outline-variant": "#3b494c",
+                        "surface-dim": "#0f1419",
+                        "surface-tint": "#00daf3",
+                        "outline": "#849396",
+                        "on-tertiary": "#621100",
+                        "surface-bright": "#353a3f",
+                        "primary": "#c3f5ff",
+                        "on-secondary-fixed-variant": "#5700c9",
+                        "primary-container": "#00e5ff",
+                        "on-error": "#690005",
+                        "on-background": "#dee3ea",
+                        "surface-variant": "#30353b",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface-container-highest": "#30353b",
+                        "primary-fixed": "#9cf0ff",
+                        "tertiary-fixed": "#ffdad2",
+                        "secondary-fixed-dim": "#d1bcff",
+                        "tertiary": "#ffe7e2",
+                        "background": "#0f1419",
+                        "on-surface-variant": "#bac9cc",
+                        "inverse-on-surface": "#2c3136",
+                        "on-error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px",
+                        "gutter": "24px",
+                        "margin-edge": "40px",
+                        "stack-lg": "32px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Space Grotesk"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Geist"],
+                        "display-lg": ["Space Grotesk"],
+                        "headline-lg-mobile": ["Space Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "data-mono": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .hud-glass {
+            background-color: rgba(15, 20, 25, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 0 1px rgba(0, 218, 243, 0.05);
+        }
+        
+        .hud-bracket-tl {
+            position: relative;
+        }
+        .hud-bracket-tl::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px;
+            width: 16px; height: 16px;
+            border-top: 2px solid #00daf3;
+            border-left: 2px solid #00daf3;
+            opacity: 0.7;
+        }
+        
+        .hud-bracket-br {
+            position: relative;
+        }
+        .hud-bracket-br::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; right: -1px;
+            width: 16px; height: 16px;
+            border-bottom: 2px solid #00daf3;
+            border-right: 2px solid #00daf3;
+            opacity: 0.7;
+        }
+
+        .circular-progress {
+            transform: rotate(-90deg);
+        }
+        .circular-progress-bg {
+            fill: none;
+            stroke: rgba(0, 218, 243, 0.1);
+            stroke-width: 4;
+        }
+        .circular-progress-value {
+            fill: none;
+            stroke: #00daf3;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 283; /* 2 * pi * r (r=45) */
+            transition: stroke-dashoffset 1s ease-out;
+        }
+        
+        /* Subtle glow animation for active elements */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 5px rgba(0, 218, 243, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(0, 218, 243, 0.5); }
+            100% { box-shadow: 0 0 5px rgba(0, 218, 243, 0.2); }
+        }
+        .active-glow {
+            animation: pulse-glow 3s infinite;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen overflow-x-hidden" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDT66qbZrJkN_RqCMKe89aIwfhJbnTp1PY83td49N7SCYlc4w8qc24ZcPbDxb_XlSXkKj8kfgsV2BGoJJZIcYh3k0cmmgBMOngUwnz36KQKXizw8ZB8LfZdbFPQ7HRIg3KjIUm_DOjMApppgH1mHY34OjYhTj_kmGBmkR47R6JP0CXAcwbDoIStMO_cr1sUgh5-YDZ5B-0W5S4uzB86HtOIPnUr6K8hhj-vm6CGtCSWLI9P_dZl6p07rRa09BkgnT9vQOQ'); background-size: cover; background-position: center; background-attachment: fixed;">
+<!-- Background overlay for deep space depth -->
+<div class="fixed inset-0 bg-background/80 mix-blend-multiply pointer-events-none z-[-1]"></div>
+<div class="fixed inset-0 bg-gradient-to-b from-transparent to-background/90 pointer-events-none z-[-1]"></div>
+<!-- SideNavBar Container -->
+<nav class="hidden md:flex flex-col items-center py-stack-lg z-40 bg-surface-container-lowest/30 backdrop-blur-2xl docked left-0 h-full w-24 border-r border-outline-variant/10 shadow-none fixed left-0 top-20 bottom-0 transition-all duration-200 ease-in-out">
+<div class="mb-stack-lg flex flex-col items-center text-center px-2">
+<span class="material-symbols-outlined text-primary text-3xl mb-1">blur_on</span>
+<div class="font-label-caps text-label-caps text-primary-fixed-dim">NODE_01</div>
+<div class="text-[10px] font-data-mono text-primary/50 uppercase tracking-widest mt-1">CONNECTED</div>
+</div>
+<ul class="flex flex-col w-full space-y-4">
+<li class="w-full">
+<a class="flex flex-col items-center justify-center p-3 w-full bg-primary-container/20 text-primary-fixed-dim border-l-2 border-primary-fixed-dim hover:bg-primary/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-caps text-label-caps mt-2 text-[10px]">Dashboard</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex flex-col items-center justify-center p-3 w-full text-on-surface-variant/60 hover:text-on-surface border-l-2 border-transparent hover:bg-primary/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">memory</span>
+<span class="font-label-caps text-label-caps mt-2 text-[10px]">Hardware</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex flex-col items-center justify-center p-3 w-full text-on-surface-variant/60 hover:text-on-surface border-l-2 border-transparent hover:bg-primary/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-label-caps text-label-caps mt-2 text-[10px]">Process</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex flex-col items-center justify-center p-3 w-full text-on-surface-variant/60 hover:text-on-surface border-l-2 border-transparent hover:bg-primary/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-caps text-label-caps mt-2 text-[10px]">Logs</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex flex-col items-center justify-center p-3 w-full text-on-surface-variant/60 hover:text-on-surface border-l-2 border-transparent hover:bg-primary/5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">lan</span>
+<span class="font-label-caps text-label-caps mt-2 text-[10px]">Network</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- TopNavBar Container -->
+<header class="hidden md:flex justify-between items-center px-margin-edge h-20 w-full bg-surface/40 backdrop-blur-xl docked full-width top-0 border-b border-outline-variant/20 shadow-none fixed z-50">
+<div class="flex items-center gap-gutter ml-24"> <!-- ml-24 to offset sidebar -->
+<div class="font-headline-lg text-headline-lg font-bold text-primary-fixed-dim drop-shadow-[0_0_8px_rgba(0,218,243,0.5)] flex items-center gap-2">
+<span class="material-symbols-outlined text-4xl">radar</span>
+                NETA_OS
+            </div>
+<nav class="hidden lg:flex ml-stack-lg gap-stack-md">
+<a class="font-label-caps text-label-caps text-primary font-bold border-b-2 border-primary-fixed-dim pb-1 hover:bg-white/5 transition-all duration-300 px-3 py-2 uppercase tracking-widest" href="#">MONITOR</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-on-surface transition-colors hover:bg-white/5 duration-300 px-3 py-2 uppercase tracking-widest" href="#">ANALYTICS</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-on-surface transition-colors hover:bg-white/5 duration-300 px-3 py-2 uppercase tracking-widest" href="#">NETWORK</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-on-surface transition-colors hover:bg-white/5 duration-300 px-3 py-2 uppercase tracking-widest" href="#">SYSTEM</a>
+</nav>
+</div>
+<div class="flex items-center gap-stack-md">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 hover:bg-white/5 rounded-full">
+<span class="material-symbols-outlined">search</span>
+</button>
+<div class="h-6 w-px bg-outline-variant/30 mx-2"></div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 hover:bg-white/5 rounded-full scale-95 active:scale-90">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="text-on-surface-variant hover:text-error transition-colors p-2 hover:bg-error/10 rounded-full scale-95 active:scale-90">
+<span class="material-symbols-outlined">power_settings_new</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="md:ml-24 md:pt-20 p-stack-md md:p-gutter max-w-[1600px] mx-auto min-h-screen flex flex-col gap-gutter">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-stack-md pt-stack-md">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface">System Performance</h1>
+<p class="font-data-mono text-on-surface-variant mt-2 text-sm opacity-80">HUD ID: 0x9F3A.2 | LIVE TELEMETRY</p>
+</div>
+<div class="hud-glass px-4 py-2 rounded-lg flex items-center gap-3">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-primary-fixed-dim"></span>
+</span>
+<span class="font-label-caps text-label-caps text-primary tracking-widest">SYSTEM OPTIMAL</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter mt-stack-md">
+<!-- Hero Gauges (CPU / GPU) -->
+<div class="col-span-1 md:col-span-8 hud-glass rounded-xl p-stack-lg hud-bracket-tl hud-bracket-br relative overflow-hidden group">
+<!-- Subtle background grid pattern -->
+<div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]"></div>
+<h2 class="font-label-caps text-label-caps text-on-surface-variant mb-stack-md tracking-[0.2em]">CORE PROCESSING UNITS</h2>
+<div class="flex flex-col sm:flex-row justify-around items-center gap-gutter relative z-10">
+<!-- CPU Gauge -->
+<div class="flex flex-col items-center">
+<div class="relative w-48 h-48 flex items-center justify-center mb-4">
+<svg class="w-full h-full circular-progress" viewbox="0 0 100 100">
+<circle class="circular-progress-bg" cx="50" cy="50" r="45"></circle>
+<circle class="circular-progress-value" cx="50" cy="50" r="45" style="stroke-dashoffset: 20;"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-display-lg text-display-lg text-primary drop-shadow-[0_0_10px_rgba(0,218,243,0.5)]">93</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant mt-1">% LOAD</span>
+</div>
+</div>
+<div class="text-center">
+<div class="font-label-caps text-label-caps text-primary tracking-widest">CPU // ACTIVE</div>
+<div class="font-data-mono text-data-mono text-on-surface mt-1">4.8 GHz</div>
+</div>
+</div>
+<!-- Visual Separator -->
+<div class="hidden sm:block h-32 w-px bg-gradient-to-b from-transparent via-outline-variant/50 to-transparent"></div>
+<!-- GPU Gauge -->
+<div class="flex flex-col items-center">
+<div class="relative w-48 h-48 flex items-center justify-center mb-4">
+<svg class="w-full h-full circular-progress" viewbox="0 0 100 100">
+<circle class="circular-progress-bg" cx="50" cy="50" r="45"></circle>
+<circle class="circular-progress-value" cx="50" cy="50" r="45" style="stroke-dashoffset: 90; stroke: #d1bcff;"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-display-lg text-display-lg text-secondary-fixed-dim drop-shadow-[0_0_10px_rgba(209,188,255,0.3)]">68</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant mt-1">% LOAD</span>
+</div>
+</div>
+<div class="text-center">
+<div class="font-label-caps text-label-caps text-secondary-fixed-dim tracking-widest">GPU // RENDERING</div>
+<div class="font-data-mono text-data-mono text-on-surface mt-1">1.9 GHz</div>
+</div>
+</div>
+</div>
+</div>
+<!-- System Overview Sidebar -->
+<div class="col-span-1 md:col-span-4 flex flex-col gap-gutter">
+<!-- Thermal Monitor -->
+<div class="hud-glass rounded-xl p-stack-md flex-1">
+<div class="flex justify-between items-center mb-stack-md">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant tracking-[0.2em]">THERMAL DYNAMICS</h2>
+<span class="material-symbols-outlined text-error text-sm">device_thermostat</span>
+</div>
+<div class="space-y-4">
+<!-- Temp Item -->
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="font-data-mono text-sm text-on-surface">CPU Core</span>
+<span class="font-data-mono text-data-mono text-primary">72°C</span>
+</div>
+<div class="h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-error w-[72%]"></div>
+</div>
+</div>
+<!-- Temp Item -->
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="font-data-mono text-sm text-on-surface">GPU Die</span>
+<span class="font-data-mono text-data-mono text-secondary-fixed-dim">65°C</span>
+</div>
+<div class="h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-secondary-fixed-dim to-error w-[65%]"></div>
+</div>
+</div>
+<!-- Temp Item -->
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="font-data-mono text-sm text-on-surface">NVMe SSD</span>
+<span class="font-data-mono text-data-mono text-on-surface">41°C</span>
+</div>
+<div class="h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-outline-variant w-[41%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Network Throughput -->
+<div class="hud-glass rounded-xl p-stack-md flex-1 relative overflow-hidden">
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-primary/10 to-transparent pointer-events-none"></div>
+<div class="flex justify-between items-center mb-stack-md">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant tracking-[0.2em]">NETWORK I/O</h2>
+<span class="material-symbols-outlined text-primary text-sm">wifi_tethering</span>
+</div>
+<div class="grid grid-cols-2 gap-4 relative z-10">
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">DOWNLINK</div>
+<div class="font-data-mono text-2xl text-primary flex items-baseline gap-1">
+                                842 <span class="text-sm text-on-surface-variant opacity-70">Mbps</span>
+</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">UPLINK</div>
+<div class="font-data-mono text-2xl text-on-surface flex items-baseline gap-1">
+                                126 <span class="text-sm text-on-surface-variant opacity-70">Mbps</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Memory & Storage Grid -->
+<div class="col-span-1 md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- RAM Usage -->
+<div class="hud-glass rounded-xl p-stack-md hud-bracket-tl">
+<div class="flex justify-between items-center mb-stack-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">memory_alt</span>
+<h2 class="font-label-caps text-label-caps text-on-surface-variant tracking-[0.2em]">VOLATILE MEMORY</h2>
+</div>
+<span class="font-data-mono text-sm px-2 py-1 bg-surface-container-high rounded border border-outline-variant/30 text-on-surface">DDR5-6000</span>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end">
+<span class="font-display-lg text-display-lg text-on-surface">24.5<span class="text-2xl text-on-surface-variant">GB</span></span>
+<span class="font-data-mono text-on-surface-variant mb-2">/ 64.0 GB</span>
+</div>
+<div class="h-2 w-full bg-surface-container-lowest rounded-sm overflow-hidden flex border border-outline-variant/20">
+<div class="h-full bg-primary w-[38%]"></div>
+<div class="h-full bg-secondary-fixed-dim/50 w-[15%] ml-1"></div>
+</div>
+<div class="flex justify-between font-label-caps text-[10px] text-on-surface-variant mt-2">
+<span class="flex items-center gap-1"><span class="w-2 h-2 bg-primary rounded-full"></span> IN USE (38%)</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 bg-secondary-fixed-dim/50 rounded-full"></span> CACHED (15%)</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 bg-surface-container-lowest border border-outline-variant/50 rounded-full"></span> FREE (47%)</span>
+</div>
+</div>
+</div>
+<!-- SSD Activity -->
+<div class="hud-glass rounded-xl p-stack-md hud-bracket-br">
+<div class="flex justify-between items-center mb-stack-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-fixed-dim">storage</span>
+<h2 class="font-label-caps text-label-caps text-on-surface-variant tracking-[0.2em]">NON-VOLATILE STORAGE</h2>
+</div>
+<span class="font-data-mono text-sm px-2 py-1 bg-surface-container-high rounded border border-outline-variant/30 text-on-surface">NVMe Gen4</span>
+</div>
+<div class="grid grid-cols-2 gap-4 h-full">
+<div class="flex flex-col justify-center border-r border-outline-variant/20 pr-4">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-2">READ SPEED</div>
+<div class="font-data-mono text-3xl text-secondary-fixed-dim drop-shadow-[0_0_8px_rgba(209,188,255,0.3)]">
+                                4,250 <span class="text-sm text-on-surface-variant opacity-70">MB/s</span>
+</div>
+</div>
+<div class="flex flex-col justify-center pl-2">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-2">WRITE SPEED</div>
+<div class="font-data-mono text-3xl text-on-surface">
+                                3,890 <span class="text-sm text-on-surface-variant opacity-70">MB/s</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple script to animate circular progress bars on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const circles = document.querySelectorAll('.circular-progress-value');
+                circles.forEach(circle => {
+                    const currentOffset = circle.style.strokeDashoffset;
+                    // Trigger reflow
+                    void circle.offsetWidth;
+                    circle.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                    // Re-apply to animate from 283 (empty) to target
+                    circle.style.strokeDashoffset = '283';
+                    setTimeout(() => {
+                        circle.style.strokeDashoffset = currentOffset;
+                    }, 100);
+                });
+            }, 500);
+        });
+    </script>
+</body></html>
