@@ -34,12 +34,8 @@ class HUDBridgeAPI:
         self.is_closed: bool = False
         self.window: Optional[Any] = None
 
-        # Subscribe to engine if provided
-        if self.engine is not None and hasattr(self.engine, "subscribe"):
-            try:
-                self.engine.subscribe(self._on_telemetry_tick)
-            except Exception as exc:
-                logger.warning("Failed to register telemetry engine subscriber: %s", exc)
+        # Engine reference is stored for get_telemetry_snapshot polling
+        # Background thread evaluate_js is not auto-subscribed to avoid WinForms COM deadlocks
 
     def set_window(self, window: Any) -> None:
         """Attaches the active pywebview.Window instance."""

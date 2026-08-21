@@ -110,13 +110,12 @@ def launch_gui(
     logger.info("Launching Glassmorphism Performance HUD (mode=%s)...", screen_mode)
 
     try:
-        # Start PyWebView with Microsoft Edge WebView2 Evergreen runtime
-        webview.start(debug=debug, gui="edgechromium")
+        # Start PyWebView with local HTTP server and EdgeChromium runtime
+        webview.start(debug=debug, http_server=True, gui="edgechromium")
     except Exception as exc:
         logger.error("Failed to start PyWebView with EdgeChromium: %s", exc)
-        # Try fallback without specific GUI backend flag
         try:
-            webview.start(debug=debug)
+            webview.start(debug=debug, http_server=True)
         except Exception as fallback_exc:
             logger.critical("Critical error starting GUI: %s", fallback_exc)
     finally:

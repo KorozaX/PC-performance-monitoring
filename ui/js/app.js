@@ -507,32 +507,68 @@
   }
 
   /**
+   * Continuous Telemetry Polling Routine
+   */
+  function startPollingTelemetry() {
+    if (state.pollingTimer) {
+      clearInterval(state.pollingTimer);
+    }
+
+    const fetchTelemetry = async () => {
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.get_telemetry_snapshot) {
+        try {
+          const snap = await window.pywebview.api.get_telemetry_snapshot();
+          if (snap && typeof snap === "object" && Object.keys(snap).length > 0) {
+            window.onTelemetryUpdate(snap);
+          }
+        } catch (err) {
+          console.error("Telemetry fetch error:", err);
+        }
+      }
+    };
+
+    // Immediate first fetch
+    fetchTelemetry();
+    // Regular 1000ms update interval
+    state.pollingTimer = setInterval(fetchTelemetry, 1000);
+  }
+
+  /**
    * Initialization Routine
    */
   function init() {
     initEventListeners();
-    setScreenMode("standard");
+
+    // Set initial class without triggering unnecessary early bridge resize
+    state.currentMode = "standard";
+    DOM.body.className = "bg-background text-on-surface font-body-md min-h-screen mode-standard";
+    if (DOM.modeLabel) DOM.modeLabel.textContent = "STANDARD";
 
     // Handle PyWebView Ready Hook
     window.addEventListener("pywebviewready", () => {
       state.isBridgeReady = true;
       console.info("PyWebView Bridge is ready.");
-
-      if (window.pywebview.api && window.pywebview.api.get_telemetry_snapshot) {
-        window.pywebview.api.get_telemetry_snapshot().then((snap) => {
-          if (snap && Object.keys(snap).length > 0) {
-            window.onTelemetryUpdate(snap);
-          }
-        });
-      }
+      startPollingTelemetry();
     });
+
+    // Fallback interval check for pywebview bridge injection
+    const bridgeCheck = setInterval(() => {
+      if (window.pywebview && window.pywebview.api) {
+        clearInterval(bridgeCheck);
+        if (!state.isBridgeReady) {
+          state.isBridgeReady = true;
+          startPollingTelemetry();
+        }
+      }
+    }, 200);
 
     // Check if running directly in browser without PyWebView
     setTimeout(() => {
       if (!window.pywebview && !state.latestSnapshot) {
+        clearInterval(bridgeCheck);
         startBrowserMockTelemetry();
       }
-    }, 800);
+    }, 1200);
   }
 
   // Run on DOM ready
