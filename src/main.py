@@ -90,33 +90,61 @@ def print_snapshot_table(snapshot: Dict[str, Any], sample_num: int, total_sample
     print(f"Timestamp: {snapshot.get('timestamp')}")
 
     cpu = snapshot.get("cpu", {})
+    cpu_name = cpu.get("name") or cpu.get("model")
+    cpu_load = cpu.get("utilization_pct") if "utilization_pct" in cpu else cpu.get("load_pct")
+    cpu_freq = cpu.get("frequency_mhz") or (cpu.get("freq_ghz", 0) * 1000)
     print(
-        f"CPU:     {cpu.get('model')} | Load: {cpu.get('load_pct')}% | Freq: {cpu.get('freq_ghz')} GHz | Temp: {cpu.get('temperature_c')}°C"
+        f"CPU:       {cpu_name} | Load: {cpu_load}% | Freq: {cpu_freq} MHz | Temp: {cpu.get('temperature_c')}°C"
     )
 
     ram = snapshot.get("ram", {})
     dist = ram.get("distribution", {})
+    ram_load = ram.get("utilization_pct") if "utilization_pct" in ram else ram.get("load_pct")
     print(
-        f"RAM:     {ram.get('used_gb')}/{ram.get('total_gb')} GB ({ram.get('load_pct')}%) | Badge: {ram.get('type_badge')} | In-Use: {dist.get('in_use_pct')}% Cached: {dist.get('cached_pct')}% Free: {dist.get('free_pct')}%"
+        f"RAM:       {ram.get('used_mb'):,} MB / {ram.get('total_mb'):,} MB ({ram.get('used_gb')}/{ram.get('total_gb')} GB, {ram_load}%) | Badge: {ram.get('type_badge')} | In-Use: {dist.get('in_use_pct')}% Cached: {dist.get('cached_pct')}% Free: {dist.get('free_pct')}%"
     )
 
     for g in snapshot.get("gpus", []):
+        g_name = g.get("name") or g.get("model")
+        g_load = g.get("utilization_pct") if "utilization_pct" in g else g.get("load_pct")
+        g_clock = g.get("clock_mhz") or g.get("freq_mhz")
         print(
-            f"GPU [{g.get('id')}]: {g.get('model')} ({g.get('type')}) | Load: {g.get('load_pct')}% | Clock: {g.get('freq_mhz')} MHz | VRAM: {g.get('vram_used_gb')}/{g.get('vram_total_gb')} GB | Temp: {g.get('temperature_c')}°C"
+            f"GPU [{g.get('id')}]:   {g_name} ({g.get('type')}) | Load: {g_load}% | Clock: {g_clock} MHz | VRAM: {g.get('vram_used_mb')} / {g.get('vram_total_mb')} MB ({g.get('vram_used_gb')}/{g.get('vram_total_gb')} GB) | Temp: {g.get('temperature_c')}°C"
+        )
+
+    for p in snapshot.get("processes", []):
+        print(
+            f"PROCESS:   PID {p.get('pid'):<6} | {p.get('name'):<22} | CPU: {p.get('cpu_pct'):>5.1f}% | RAM: {p.get('memory_mb'):>7.1f} MB ({p.get('memory_pct'):>4.1f}%) | Disk: {p.get('disk_mbps'):>5.1f} MB/s | GPU: {p.get('gpu_pct'):>5.1f}%"
         )
 
     for d in snapshot.get("storage", {}).get("drives", []):
+        d_letter = d.get("letter") or d.get("device")
+        d_type = d.get("type") or d.get("type_badge")
+        d_read = d.get("read_mbps") if "read_mbps" in d else d.get("read_mbs")
+        d_write = d.get("write_mbps") if "write_mbps" in d else d.get("write_mbs")
+        d_load = d.get("utilization_pct") if "utilization_pct" in d else d.get("load_pct")
         print(
-            f"STORAGE: {d.get('device')} ({d.get('type_badge')}) | Used: {d.get('used_gb')}/{d.get('total_gb')} GB | Read: {d.get('read_mbs')} MB/s | Write: {d.get('write_mbs')} MB/s | Active: {d.get('load_pct')}% | Temp: {d.get('temperature_c')}°C"
+            f"STORAGE:   {d_letter} ({d_type}) | Used: {d.get('used_gb')}/{d.get('total_gb')} GB | Read: {d_read} MB/s | Write: {d_write} MB/s | Active: {d_load}% | Temp: {d.get('temperature_c')}°C"
         )
 
     net = snapshot.get("network", {})
+    net_name = net.get("adapter_name") or net.get("interface")
+    net_down = net.get("download_mbps") if "download_mbps" in net else net.get("downlink_mbps")
+    net_up = net.get("upload_mbps") if "upload_mbps" in net else net.get("uplink_mbps")
     print(
-        f"NETWORK: {net.get('interface')} | Connected: {net.get('connected')} | Down: {net.get('downlink_mbps')} Mbps ({net.get('downlink_mbs')} MB/s) | Up: {net.get('uplink_mbps')} Mbps ({net.get('uplink_mbs')} MB/s)"
+        f"NETWORK:   {net_name} | Connected: {net.get('connected')} | Down: {net_down} Mbps | Up: {net_up} Mbps"
     )
 
     th = snapshot.get("thermals", {})
-    print(f"THERMALS: CPU: {th.get('cpu_c')}°C | GPU: {th.get('gpu_c')}°C | SSD: {th.get('ssd_c')}°C")
+    print(
+        f"THERMALS:  CPU: {th.get('cpu_c')}°C | dGPU: {th.get('dgpu_c')}°C | iGPU: {th.get('igpu_c')}°C | SSD: {th.get('ssd_c')}°C"
+    )
+
+    sys_info = snapshot.get("system_info", {})
+    if sys_info:
+        print(
+            f"SYSTEM:    OS: {sys_info.get('os')} | Arch: {sys_info.get('cpu_arch')} | MB: {sys_info.get('motherboard')} | BIOS: {sys_info.get('bios_version')}"
+        )
     print("==========================================================================")
 
 
@@ -127,11 +155,12 @@ def print_benchmark_table(summary: Dict[str, Any], count: int):
         f"{'Subsystem':<15} | {'Min (ms)':<10} | {'Avg (ms)':<10} | {'Median (ms)':<12} | {'P95 (ms)':<10} | {'Max (ms)':<10}"
     )
     print("-" * 78)
-    for sub in ["cpu", "ram", "gpu", "storage", "network", "thermals", "total"]:
-        m = summary[sub]
-        print(
-            f"{sub.upper():<15} | {m['min_ms']:<10.3f} | {m['avg_ms']:<10.3f} | {m['median_ms']:<12.3f} | {m['p95_ms']:<10.3f} | {m['max_ms']:<10.3f}"
-        )
+    for sub in ["cpu", "ram", "gpu", "processes", "storage", "network", "thermals", "total"]:
+        if sub in summary:
+            m = summary[sub]
+            print(
+                f"{sub.upper():<15} | {m['min_ms']:<10.3f} | {m['avg_ms']:<10.3f} | {m['median_ms']:<12.3f} | {m['p95_ms']:<10.3f} | {m['max_ms']:<10.3f}"
+            )
     print("========================================================================================")
     total_avg = summary["total"]["avg_ms"]
     print(f"Total Polling Overhead: {total_avg:.3f} ms / 1000 ms cycle ({(total_avg / 10.0):.3f}% CPU budget)")
@@ -161,6 +190,7 @@ def run_benchmark(engine: TelemetryEngine, count: int = 50, fmt: str = "table"):
         "cpu": [],
         "ram": [],
         "gpu": [],
+        "processes": [],
         "storage": [],
         "network": [],
         "thermals": [],
@@ -181,6 +211,10 @@ def run_benchmark(engine: TelemetryEngine, count: int = 50, fmt: str = "table"):
         t0 = time.perf_counter()
         gpu_data = engine.gpu_collector.collect()
         timings["gpu"].append((time.perf_counter() - t0) * 1000.0)
+
+        t0 = time.perf_counter()
+        engine.process_collector.collect()
+        timings["processes"].append((time.perf_counter() - t0) * 1000.0)
 
         t0 = time.perf_counter()
         storage_data = engine.storage_collector.collect()

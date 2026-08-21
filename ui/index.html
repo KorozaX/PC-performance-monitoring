@@ -69,7 +69,7 @@
 
   <div id="hud-main-container" class="relative w-full h-screen flex flex-col">
 
-    <!-- Top Navigation & Window Title Bar -->
+    <!-- Top Navigation & Frameless Window Title Bar -->
     <header id="top-nav-bar" class="pywebview-drag-region flex justify-between items-center px-6 h-16 w-full bg-surface/60 backdrop-blur-xl border-b border-outline-variant/20 shadow-none fixed top-0 left-0 right-0 z-50">
       
       <!-- Brand & Title -->
@@ -79,10 +79,17 @@
           <span>NETA_OS</span>
         </div>
 
-        <nav class="hidden md:flex items-center gap-3 ml-4">
-          <span class="font-label-caps text-xs text-primary font-bold border-b-2 border-primary pb-0.5 px-2 py-1 tracking-widest">MONITOR</span>
-          <span class="font-label-caps text-xs text-on-surface-variant/70 font-medium px-2 py-1 tracking-widest hover:text-on-surface transition-colors cursor-pointer">TELEMETRY</span>
-          <span class="font-label-caps text-xs text-on-surface-variant/70 font-medium px-2 py-1 tracking-widest hover:text-on-surface transition-colors cursor-pointer">SYSTEM</span>
+        <!-- Interactive View Navigation Tabs -->
+        <nav id="view-nav-tabs" class="hidden md:flex items-center gap-2 ml-4 no-drag">
+          <button id="tab-monitor" data-tab="monitor" class="nav-tab active font-label-caps text-xs text-primary font-bold px-3 py-1.5 tracking-widest cursor-pointer rounded-t">
+            MONITOR
+          </button>
+          <button id="tab-telemetry" data-tab="telemetry" class="nav-tab font-label-caps text-xs text-on-surface-variant/70 font-medium px-3 py-1.5 tracking-widest hover:text-on-surface transition-colors cursor-pointer rounded-t">
+            TELEMETRY
+          </button>
+          <button id="tab-system" data-tab="system" class="nav-tab font-label-caps text-xs text-on-surface-variant/70 font-medium px-3 py-1.5 tracking-widest hover:text-on-surface transition-colors cursor-pointer rounded-t">
+            SYSTEM
+          </button>
         </nav>
       </div>
 
@@ -100,23 +107,28 @@
         <div class="h-4 w-px bg-outline-variant/30 mx-1"></div>
 
         <!-- Mode Switcher -->
-        <button id="btn-mode" title="Toggle Standard / Ultra-Wide 1920x550 Mode (Ctrl+Shift+M)" class="flex items-center gap-1.5 px-2.5 py-1 rounded hud-glass border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/50 transition-colors text-xs font-label-caps">
+        <button id="btn-mode" title="Toggle Standard / Ultra-Wide 1920x550 Mode (Ctrl+Shift+M)" class="win-control-btn flex items-center gap-1.5 px-2.5 py-1 rounded hud-glass border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/50 transition-colors text-xs font-label-caps">
           <span class="material-symbols-outlined text-sm">aspect_ratio</span>
           <span id="mode-label">STANDARD</span>
         </button>
 
         <!-- Pin Always-On-Top -->
-        <button id="btn-pin" title="Toggle Pin Always-On-Top (Ctrl+Shift+P)" class="p-1.5 rounded-full hud-glass border border-outline-variant/30 text-primary hover:bg-primary/10 transition-colors">
+        <button id="btn-pin" title="Toggle Pin Always-On-Top (Ctrl+Shift+P)" class="win-control-btn p-1.5 rounded-full hud-glass border border-outline-variant/30 text-primary hover:bg-primary/10 transition-colors">
           <span class="material-symbols-outlined text-base">push_pin</span>
         </button>
 
         <!-- Minimize -->
-        <button id="btn-min" title="Minimize" class="p-1.5 rounded-full hud-glass border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:bg-white/5 transition-colors">
+        <button id="btn-min" title="Minimize Window" class="win-control-btn p-1.5 rounded-full hud-glass border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:bg-white/5 transition-colors">
           <span class="material-symbols-outlined text-base">remove</span>
         </button>
 
+        <!-- Maximize / Restore -->
+        <button id="btn-max" title="Maximize Window" class="win-control-btn p-1.5 rounded-full hud-glass border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:bg-white/5 transition-colors">
+          <span id="icon-max" class="material-symbols-outlined text-base">crop_square</span>
+        </button>
+
         <!-- Close Window -->
-        <button id="btn-close" title="Close HUD" class="p-1.5 rounded-full hud-glass border border-outline-variant/30 text-on-surface-variant hover:text-error hover:bg-error/10 hover:border-error/50 transition-colors">
+        <button id="btn-close" title="Close HUD" class="win-control-btn p-1.5 rounded-full hud-glass border border-outline-variant/30 text-on-surface-variant hover:text-error hover:bg-error/10 hover:border-error/50 transition-colors">
           <span class="material-symbols-outlined text-base">power_settings_new</span>
         </button>
       </div>
@@ -132,28 +144,22 @@
 
       <ul class="flex flex-col w-full space-y-2">
         <li class="w-full">
-          <a class="flex flex-col items-center justify-center py-2.5 w-full bg-primary/10 text-primary border-l-2 border-primary" href="#">
+          <button id="side-tab-monitor" data-tab="monitor" class="sidebar-nav-btn flex flex-col items-center justify-center py-2.5 w-full bg-primary/10 text-primary border-l-2 border-primary transition-colors">
             <span class="material-symbols-outlined text-lg">dashboard</span>
             <span class="font-label-caps text-[9px] mt-1">Dash</span>
-          </a>
+          </button>
         </li>
         <li class="w-full">
-          <a class="flex flex-col items-center justify-center py-2.5 w-full text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border-l-2 border-transparent transition-colors" href="#">
+          <button id="side-tab-telemetry" data-tab="telemetry" class="sidebar-nav-btn flex flex-col items-center justify-center py-2.5 w-full text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border-l-2 border-transparent transition-colors">
+            <span class="material-symbols-outlined text-lg">monitoring</span>
+            <span class="font-label-caps text-[9px] mt-1">Telemetry</span>
+          </button>
+        </li>
+        <li class="w-full">
+          <button id="side-tab-system" data-tab="system" class="sidebar-nav-btn flex flex-col items-center justify-center py-2.5 w-full text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border-l-2 border-transparent transition-colors">
             <span class="material-symbols-outlined text-lg">memory</span>
-            <span class="font-label-caps text-[9px] mt-1">HW</span>
-          </a>
-        </li>
-        <li class="w-full">
-          <a class="flex flex-col items-center justify-center py-2.5 w-full text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border-l-2 border-transparent transition-colors" href="#">
-            <span class="material-symbols-outlined text-lg">thermostat</span>
-            <span class="font-label-caps text-[9px] mt-1">Temp</span>
-          </a>
-        </li>
-        <li class="w-full">
-          <a class="flex flex-col items-center justify-center py-2.5 w-full text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border-l-2 border-transparent transition-colors" href="#">
-            <span class="material-symbols-outlined text-lg">lan</span>
-            <span class="font-label-caps text-[9px] mt-1">Net</span>
-          </a>
+            <span class="font-label-caps text-[9px] mt-1">System</span>
+          </button>
         </li>
       </ul>
     </nav>
@@ -161,238 +167,504 @@
     <!-- Main Content Canvas -->
     <main id="main-content-canvas" class="md:ml-20 pt-16 p-4 md:p-6 w-full max-w-[1600px] mx-auto flex-1 flex flex-col gap-4 overflow-y-auto">
       
-      <!-- Sub-Header Info Banner -->
-      <div id="header-section" class="flex justify-between items-end pb-1">
-        <div>
-          <h1 class="font-headline-lg text-2xl font-bold text-on-surface">Hardware Telemetry</h1>
-          <p class="font-data-mono text-on-surface-variant text-xs opacity-75">HUD STREAM: 0x9F3A • DRIFT COMPENSATED 1000MS</p>
+      <!-- ================================================================= -->
+      <!-- VIEW 1: MONITOR (Core Glassmorphism HUD Dashboard)                -->
+      <!-- ================================================================= -->
+      <div id="view-monitor" class="view-panel flex-1 flex flex-col gap-4">
+        
+        <!-- Sub-Header Info Banner -->
+        <div id="header-section" class="flex justify-between items-end pb-1">
+          <div>
+            <h1 class="font-headline-lg text-2xl font-bold text-on-surface">Hardware Telemetry</h1>
+            <p class="font-data-mono text-on-surface-variant text-xs opacity-75">HUD STREAM: 0x9F3A • LIVE DRIFT COMPENSATED</p>
+          </div>
         </div>
+
+        <!-- Bento Grid Layout -->
+        <div id="bento-grid-layout" class="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1">
+          
+          <!-- Hero Panel: Core Processing Units (CPU & Simultaneous Multi-GPU) -->
+          <div class="card-hero col-span-1 md:col-span-8 hud-glass rounded-xl p-5 hud-bracket-tl hud-bracket-br relative overflow-hidden flex flex-col justify-between">
+            <div class="absolute inset-0 opacity-10 radar-grid pointer-events-none"></div>
+
+            <!-- Hero Card Header & Multi-GPU Status -->
+            <div class="flex justify-between items-center mb-2 relative z-10">
+              <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">CORE PROCESSING UNITS</h2>
+              <!-- Hidden fallback tab container for test parity -->
+              <div id="gpu-tabs-container" class="hidden items-center gap-1.5 no-drag"></div>
+              <div id="gpu-count-badge" class="font-label-caps text-[10px] text-secondary tracking-widest px-2 py-0.5 rounded bg-surface-container-high/60 border border-outline-variant/30">
+                ACTIVE CORES
+              </div>
+            </div>
+
+            <!-- Simultaneous CPU & Multi-GPU Gauges Row -->
+            <div id="hero-gauges-row" class="flex flex-row justify-around items-center gap-4 relative z-10 py-2 flex-wrap md:flex-nowrap">
+              
+              <!-- CPU Gauge -->
+              <div class="flex flex-col items-center flex-1 min-w-[140px]">
+                <div class="gauge-container relative w-32 h-32 md:w-40 md:h-40 flex items-center justify-center mb-2">
+                  <svg class="w-full h-full circular-progress" viewBox="0 0 100 100">
+                    <circle class="circular-progress-bg" cx="50" cy="50" r="45"></circle>
+                    <circle id="cpu-progress-circle" class="circular-progress-value" cx="50" cy="50" r="45" style="stroke-dashoffset: 283;"></circle>
+                  </svg>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span id="cpu-load-text" class="font-display-lg text-3xl md:text-4xl text-primary drop-shadow-[0_0_10px_rgba(0,218,243,0.6)]">0</span>
+                    <span class="font-label-caps text-[10px] md:text-xs text-on-surface-variant mt-0.5">% LOAD</span>
+                  </div>
+                </div>
+                <div class="text-center">
+                  <div id="cpu-status-tag" class="font-label-caps text-[11px] text-primary tracking-widest font-bold">CPU // ACTIVE</div>
+                  <div id="cpu-freq-text" class="font-data-mono text-base md:text-lg text-on-surface mt-0.5">0.0 GHz</div>
+                  <div id="cpu-model-text" class="font-body-md text-[11px] text-on-surface-variant/80 max-w-[180px] truncate mt-0.5" title="CPU Initializing...">CPU Initializing...</div>
+                </div>
+              </div>
+
+              <!-- Vertical Separator -->
+              <div class="h-28 w-px bg-gradient-to-b from-transparent via-outline-variant/40 to-transparent hidden md:block"></div>
+
+              <!-- Multi-GPU Container (Renders All Detected GPUs Side-by-Side) -->
+              <div id="gpus-gauges-container" class="flex flex-row items-center justify-around flex-1 gap-4">
+                
+                <!-- Primary / Active GPU (GPU 0) -->
+                <div id="gpu-card-0" class="flex flex-col items-center flex-1 min-w-[140px]">
+                  <div class="gauge-container relative w-32 h-32 md:w-40 md:h-40 flex items-center justify-center mb-2">
+                    <svg class="w-full h-full circular-progress" viewBox="0 0 100 100">
+                      <circle class="circular-progress-bg circular-progress-bg-purple" cx="50" cy="50" r="45"></circle>
+                      <circle id="gpu-progress-circle" class="circular-progress-value circular-progress-value-purple" cx="50" cy="50" r="45" style="stroke-dashoffset: 283;"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                      <span id="gpu-load-text" class="font-display-lg text-3xl md:text-4xl text-secondary drop-shadow-[0_0_10px_rgba(209,188,255,0.4)]">0</span>
+                      <span class="font-label-caps text-[10px] md:text-xs text-on-surface-variant mt-0.5">% LOAD</span>
+                    </div>
+                  </div>
+                  <div class="text-center">
+                    <div id="gpu-status-tag" class="font-label-caps text-[11px] text-secondary tracking-widest font-bold">GPU // GRAPHICS</div>
+                    <div id="gpu-freq-text" class="font-data-mono text-base md:text-lg text-on-surface mt-0.5">0 MHz</div>
+                    <div id="gpu-model-text" class="font-body-md text-[11px] text-on-surface-variant/80 max-w-[180px] truncate mt-0.5" title="GPU Initializing...">GPU Initializing...</div>
+                    <div id="gpu-vram-text" class="font-data-mono-sm text-[10px] text-secondary/80 mt-0.5">VRAM: 0.0 / 0.0 GB</div>
+                  </div>
+                </div>
+
+                <!-- Secondary GPU Container (e.g. iGPU or secondary dGPU) -->
+                <div id="gpu-secondary-wrapper" class="hidden flex-col items-center flex-1 min-w-[140px]">
+                  <div class="gauge-container relative w-32 h-32 md:w-40 md:h-40 flex items-center justify-center mb-2">
+                    <svg class="w-full h-full circular-progress" viewBox="0 0 100 100">
+                      <circle class="circular-progress-bg" cx="50" cy="50" r="45"></circle>
+                      <circle id="gpu-secondary-circle" class="circular-progress-value" cx="50" cy="50" r="45" style="stroke-dashoffset: 283; stroke: #00daf3;"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                      <span id="gpu-secondary-load-text" class="font-display-lg text-3xl md:text-4xl text-primary drop-shadow-[0_0_10px_rgba(0,218,243,0.5)]">0</span>
+                      <span class="font-label-caps text-[10px] md:text-xs text-on-surface-variant mt-0.5">% LOAD</span>
+                    </div>
+                  </div>
+                  <div class="text-center">
+                    <div id="gpu-secondary-status-tag" class="font-label-caps text-[11px] text-primary tracking-widest font-bold">GPU // INTEGRATED</div>
+                    <div id="gpu-secondary-freq-text" class="font-data-mono text-base md:text-lg text-on-surface mt-0.5">N/A</div>
+                    <div id="gpu-secondary-model-text" class="font-body-md text-[11px] text-on-surface-variant/80 max-w-[180px] truncate mt-0.5" title="Secondary GPU">iGPU</div>
+                    <div id="gpu-secondary-vram-text" class="font-data-mono-sm text-[10px] text-primary/80 mt-0.5">VRAM: Shared</div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Sidebar Overview Column (Thermals & Network) -->
+          <div id="sidebar-overview-col" class="col-span-1 md:col-span-4 flex flex-col gap-4">
+            
+            <!-- Consolidated Thermal Dynamics Panel (R7) -->
+            <div class="card-thermals hud-glass rounded-xl p-4 flex-1 flex flex-col justify-between">
+              <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-error text-base">device_thermostat</span>
+                  <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">THERMAL DYNAMICS</h2>
+                </div>
+                <span class="text-[10px] font-label-caps text-on-surface-variant/60">LIVE °C</span>
+              </div>
+
+              <div class="space-y-3">
+                <!-- CPU Temp -->
+                <div>
+                  <div class="flex justify-between items-end mb-1 text-xs font-data-mono">
+                    <span class="text-on-surface">CPU Package</span>
+                    <span id="temp-cpu-text" class="text-primary font-bold">N/A</span>
+                  </div>
+                  <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+                    <div id="temp-cpu-bar" class="h-full bg-primary transition-all duration-500" style="width: 0%;"></div>
+                  </div>
+                </div>
+
+                <!-- dGPU Temp -->
+                <div>
+                  <div class="flex justify-between items-end mb-1 text-xs font-data-mono">
+                    <span class="text-on-surface">GPU Core</span>
+                    <span id="temp-gpu-text" class="text-secondary font-bold">N/A</span>
+                  </div>
+                  <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+                    <div id="temp-gpu-bar" class="h-full bg-secondary transition-all duration-500" style="width: 0%;"></div>
+                  </div>
+                </div>
+
+                <!-- SSD Temp -->
+                <div>
+                  <div class="flex justify-between items-end mb-1 text-xs font-data-mono">
+                    <span class="text-on-surface">NVMe SSD</span>
+                    <span id="temp-ssd-text" class="text-on-surface font-bold">N/A</span>
+                  </div>
+                  <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+                    <div id="temp-ssd-bar" class="h-full bg-outline-variant transition-all duration-500" style="width: 0%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Network I/O Panel -->
+            <div class="card-network hud-glass rounded-xl p-4 flex-1 relative overflow-hidden flex flex-col justify-between">
+              <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-primary/10 to-transparent pointer-events-none"></div>
+
+              <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-primary text-base">wifi_tethering</span>
+                  <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">NETWORK I/O</h2>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span id="net-state-dot" class="w-2 h-2 rounded-full bg-primary active-pulse-cyan"></span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 relative z-10 my-1">
+                <div>
+                  <div class="font-label-caps text-[10px] text-on-surface-variant mb-0.5">DOWNLINK</div>
+                  <div class="font-data-mono text-xl text-primary flex items-baseline gap-1">
+                    <span id="net-down-text">0</span>
+                    <span id="net-down-unit" class="text-xs text-on-surface-variant opacity-70">Mbps</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="font-label-caps text-[10px] text-on-surface-variant mb-0.5">UPLINK</div>
+                  <div class="font-data-mono text-xl text-on-surface flex items-baseline gap-1">
+                    <span id="net-up-text">0</span>
+                    <span id="net-up-unit" class="text-xs text-on-surface-variant opacity-70">Mbps</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="net-adapter-badge" class="font-data-mono-sm text-[10px] text-on-surface-variant/80 truncate px-2 py-0.5 bg-surface-container-high/60 rounded border border-outline-variant/30 mt-1" title="Active Adapter">
+                Active Adapter
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Row: RAM, Storage & Top 5 Processes (Fluid 3-Column Distribution) -->
+          <div id="bottom-memory-storage-row" class="col-span-1 md:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <!-- Volatile Memory (RAM) Card (R5: Enhanced MB/GB Dual Display) -->
+            <div class="card-ram hud-glass rounded-xl p-4 hud-bracket-tl flex flex-col justify-between">
+              <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary text-base">memory_alt</span>
+                  <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">VOLATILE MEMORY</h2>
+                </div>
+                <span id="ram-type-badge" class="font-data-mono text-xs px-2 py-0.5 bg-surface-container-high rounded border border-outline-variant/30 text-on-surface">DDR5</span>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-end">
+                  <div class="flex items-baseline gap-1">
+                    <span id="ram-used-text" class="font-display-lg text-2xl md:text-3xl font-bold text-on-surface">0.0</span>
+                    <span class="font-data-mono text-xs text-primary">GB</span>
+                  </div>
+                  <span id="ram-total-text" class="font-data-mono text-xs text-on-surface-variant mb-1">/ 0.0 GB</span>
+                </div>
+
+                <!-- Numerical MB Breakdown -->
+                <div class="flex justify-between items-center text-[10px] font-data-mono text-on-surface-variant/90">
+                  <span id="ram-used-mb">0 MB</span>
+                  <span id="ram-total-mb">/ 0 MB</span>
+                  <span id="ram-load-text" class="text-primary font-bold">0%</span>
+                </div>
+
+                <!-- 3-Segment RAM Distribution Bar -->
+                <div class="h-2 w-full bg-surface-container-lowest rounded-sm overflow-hidden flex border border-outline-variant/30">
+                  <div id="ram-bar-in-use" class="h-full bg-primary transition-all duration-500" style="width: 0%;"></div>
+                  <div id="ram-bar-cached" class="h-full bg-secondary/70 transition-all duration-500" style="width: 0%;"></div>
+                </div>
+
+                <!-- Distribution Legend -->
+                <div class="flex justify-between font-label-caps text-[8px] md:text-[9px] text-on-surface-variant mt-0.5">
+                  <span class="flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                    <span id="ram-legend-in-use">IN USE (0%)</span>
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-secondary/70 rounded-full"></span>
+                    <span id="ram-legend-cached">CACHED (0%)</span>
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-surface-container-high border border-outline-variant/50 rounded-full"></span>
+                    <span id="ram-legend-free">FREE (100%)</span>
+                  </span>
+                </div>
+
+                <!-- Committed / Available breakdown -->
+                <div class="flex justify-between items-center text-[9px] font-data-mono text-on-surface-variant/70 border-t border-outline-variant/20 pt-1.5 mt-0.5">
+                  <span id="ram-committed-text">Committed: 0 / 0 GB</span>
+                  <span id="ram-free-text">Free: 0 GB</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Non-Volatile Storage (SSD) Card -->
+            <div class="card-ssd hud-glass rounded-xl p-4 hud-bracket-br flex flex-col justify-between">
+              <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-secondary text-base">storage</span>
+                  <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">STORAGE I/O</h2>
+                </div>
+                <span id="ssd-type-badge" class="font-data-mono text-xs px-2 py-0.5 bg-surface-container-high rounded border border-outline-variant/30 text-on-surface">NVMe</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 my-auto items-center">
+                <div class="flex flex-col justify-center border-r border-outline-variant/20 pr-3">
+                  <div class="font-label-caps text-[10px] text-on-surface-variant mb-1">READ SPEED</div>
+                  <div class="font-data-mono text-xl md:text-2xl font-bold text-secondary drop-shadow-[0_0_8px_rgba(209,188,255,0.4)] flex items-baseline gap-1">
+                    <span id="ssd-read-text">0</span>
+                    <span class="text-xs text-on-surface-variant opacity-70">MB/s</span>
+                  </div>
+                </div>
+
+                <div class="flex flex-col justify-center pl-2">
+                  <div class="font-label-caps text-[10px] text-on-surface-variant mb-1">WRITE SPEED</div>
+                  <div class="font-data-mono text-xl md:text-2xl font-bold text-on-surface flex items-baseline gap-1">
+                    <span id="ssd-write-text">0</span>
+                    <span class="text-xs text-on-surface-variant opacity-70">MB/s</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="ssd-drive-info" class="font-data-mono text-[10px] text-on-surface-variant/70 truncate mt-2 border-t border-outline-variant/20 pt-1.5">
+                C: Local Drive
+              </div>
+            </div>
+
+            <!-- Top 5 Resource-Consuming Processes Card (R3) -->
+            <div id="card-processes" class="card-processes hud-glass rounded-xl p-4 flex flex-col justify-between">
+              <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary text-base">terminal</span>
+                  <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">TOP PROCESSES</h2>
+                </div>
+                <span class="font-label-caps text-[9px] text-primary/80 px-2 py-0.5 bg-surface-container-high rounded border border-outline-variant/30">
+                  BY CPU / RAM
+                </span>
+              </div>
+
+              <!-- Top 5 Processes Live Table -->
+              <div class="w-full overflow-hidden flex-1">
+                <table class="w-full text-left text-xs font-data-mono">
+                  <thead>
+                    <tr class="text-[9px] font-label-caps text-on-surface-variant/60 border-b border-outline-variant/20 pb-1">
+                      <th class="py-1">PROCESS</th>
+                      <th class="py-1 text-right">PID</th>
+                      <th class="py-1 text-right">CPU</th>
+                      <th class="py-1 text-right">RAM</th>
+                    </tr>
+                  </thead>
+                  <tbody id="processes-table-body" class="divide-y divide-outline-variant/10 text-[11px]">
+                    <tr class="text-on-surface-variant/60">
+                      <td colspan="4" class="py-3 text-center">Scanning process tree...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
 
-      <!-- Bento Grid Layout -->
-      <div id="bento-grid-layout" class="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1">
+      <!-- ================================================================= -->
+      <!-- VIEW 2: TELEMETRY (Deep Diagnostic Telemetry & Per-Core Matrix)   -->
+      <!-- ================================================================= -->
+      <div id="view-telemetry" class="view-panel hidden flex-1 flex flex-col gap-4">
         
-        <!-- Hero Panel: Core Processing Units (CPU & GPU) -->
-        <div class="card-hero col-span-1 md:col-span-8 hud-glass rounded-xl p-5 hud-bracket-tl hud-bracket-br relative overflow-hidden flex flex-col justify-between">
-          <div class="absolute inset-0 opacity-10 radar-grid pointer-events-none"></div>
+        <div class="flex justify-between items-end pb-1">
+          <div>
+            <h1 class="font-headline-lg text-2xl font-bold text-on-surface">Deep Hardware Telemetry</h1>
+            <p class="font-data-mono text-on-surface-variant text-xs opacity-75">LOGICAL THREAD MATRICES • EXTENDED PROCESS STREAM</p>
+          </div>
+        </div>
 
-          <!-- Hero Card Header & Multi-GPU Switcher -->
-          <div class="flex justify-between items-center mb-2 relative z-10">
-            <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">CORE PROCESSING UNITS</h2>
-            <div id="gpu-tabs-container" class="flex items-center gap-1.5 no-drag" style="display: none;"></div>
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1">
+          
+          <!-- Per-Core CPU Load Matrix Card -->
+          <div class="col-span-1 md:col-span-7 hud-glass rounded-xl p-5 flex flex-col">
+            <div class="flex justify-between items-center mb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">grid_view</span>
+                <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">LOGICAL CPU THREAD LOAD MATRIX</h2>
+              </div>
+              <span id="core-count-badge" class="font-data-mono text-xs text-primary px-2 py-0.5 bg-surface-container-high rounded border border-outline-variant/30">
+                0 THREADS
+              </span>
+            </div>
+
+            <!-- Per-Core Grid Container -->
+            <div id="per-core-grid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5 flex-1 overflow-y-auto max-h-[360px] p-1">
+              <div class="col-span-full text-center text-xs text-on-surface-variant/60 py-6">
+                Initializing per-core CPU performance counters...
+              </div>
+            </div>
           </div>
 
-          <!-- Dual Gauges Row -->
-          <div class="flex flex-row justify-around items-center gap-4 relative z-10 py-2">
+          <!-- Extended Process Explorer (Top 10) -->
+          <div class="col-span-1 md:col-span-5 hud-glass rounded-xl p-5 flex flex-col">
+            <div class="flex justify-between items-center mb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-secondary text-lg">analytics</span>
+                <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">PROCESS RESOURCE EXPLORER</h2>
+              </div>
+              <span class="font-label-caps text-[9px] text-secondary px-2 py-0.5 bg-surface-container-high rounded border border-outline-variant/30">
+                TOP CONSUMERS
+              </span>
+            </div>
+
+            <div class="w-full overflow-y-auto max-h-[360px] flex-1">
+              <table class="w-full text-left text-xs font-data-mono">
+                <thead>
+                  <tr class="text-[9px] font-label-caps text-on-surface-variant/60 border-b border-outline-variant/20 pb-1 sticky top-0 bg-surface-container-low/90">
+                    <th class="py-1"># NAME</th>
+                    <th class="py-1 text-right">PID</th>
+                    <th class="py-1 text-right">CPU%</th>
+                    <th class="py-1 text-right">MEM MB</th>
+                    <th class="py-1 text-right">DISK</th>
+                  </tr>
+                </thead>
+                <tbody id="extended-processes-table-body" class="divide-y divide-outline-variant/10 text-[11px]">
+                  <tr class="text-on-surface-variant/60">
+                    <td colspan="5" class="py-4 text-center">Loading extended telemetry...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- VIEW 3: SYSTEM (Hardware Inventory & Specs Sheet)                 -->
+      <!-- ================================================================= -->
+      <div id="view-system" class="view-panel hidden flex-1 flex flex-col gap-4">
+        
+        <div class="flex justify-between items-end pb-1">
+          <div>
+            <h1 class="font-headline-lg text-2xl font-bold text-on-surface">System Hardware Inventory</h1>
+            <p class="font-data-mono text-on-surface-variant text-xs opacity-75">SMBIOS • DXGI • ACPI HARDWARE SPECIFICATION REPORT</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+          
+          <!-- Processor Specification Card -->
+          <div class="hud-glass rounded-xl p-5 flex flex-col justify-between">
+            <div class="flex items-center gap-2 mb-3 border-b border-outline-variant/20 pb-2">
+              <span class="material-symbols-outlined text-primary text-xl">memory</span>
+              <h2 class="font-label-caps text-sm text-primary tracking-widest font-bold">PROCESSOR SPECIFICATIONS</h2>
+            </div>
             
-            <!-- CPU Gauge -->
-            <div class="flex flex-col items-center">
-              <div class="gauge-container relative w-36 h-36 md:w-44 md:h-44 flex items-center justify-center mb-2">
-                <svg class="w-full h-full circular-progress" viewBox="0 0 100 100">
-                  <circle class="circular-progress-bg" cx="50" cy="50" r="45"></circle>
-                  <circle id="cpu-progress-circle" class="circular-progress-value" cx="50" cy="50" r="45" style="stroke-dashoffset: 283;"></circle>
-                </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <span id="cpu-load-text" class="font-display-lg text-4xl md:text-5xl text-primary drop-shadow-[0_0_10px_rgba(0,218,243,0.6)]">0</span>
-                  <span class="font-label-caps text-[10px] md:text-xs text-on-surface-variant mt-0.5">% LOAD</span>
-                </div>
+            <div class="space-y-2.5 text-xs font-data-mono flex-1">
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Model Name:</span>
+                <span id="sys-cpu-model" class="text-on-surface font-bold truncate max-w-[280px]">N/A</span>
               </div>
-              <div class="text-center">
-                <div id="cpu-status-tag" class="font-label-caps text-[11px] text-primary tracking-widest font-bold">CPU // ACTIVE</div>
-                <div id="cpu-freq-text" class="font-data-mono text-base md:text-lg text-on-surface mt-0.5">0.0 GHz</div>
-                <div id="cpu-model-text" class="font-body-md text-[11px] text-on-surface-variant/80 max-w-[180px] truncate mt-0.5">CPU Initializing...</div>
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Architecture:</span>
+                <span id="sys-cpu-arch" class="text-on-surface">x86_64</span>
               </div>
-            </div>
-
-            <!-- Vertical Separator -->
-            <div class="h-28 w-px bg-gradient-to-b from-transparent via-outline-variant/40 to-transparent"></div>
-
-            <!-- GPU Gauge -->
-            <div class="flex flex-col items-center">
-              <div class="gauge-container relative w-36 h-36 md:w-44 md:h-44 flex items-center justify-center mb-2">
-                <svg class="w-full h-full circular-progress" viewBox="0 0 100 100">
-                  <circle class="circular-progress-bg circular-progress-bg-purple" cx="50" cy="50" r="45"></circle>
-                  <circle id="gpu-progress-circle" class="circular-progress-value circular-progress-value-purple" cx="50" cy="50" r="45" style="stroke-dashoffset: 283;"></circle>
-                </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <span id="gpu-load-text" class="font-display-lg text-4xl md:text-5xl text-secondary drop-shadow-[0_0_10px_rgba(209,188,255,0.4)]">0</span>
-                  <span class="font-label-caps text-[10px] md:text-xs text-on-surface-variant mt-0.5">% LOAD</span>
-                </div>
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Core Topology:</span>
+                <span id="sys-cpu-cores" class="text-on-surface">Physical: N/A • Logical: N/A</span>
               </div>
-              <div class="text-center">
-                <div id="gpu-status-tag" class="font-label-caps text-[11px] text-secondary tracking-widest font-bold">GPU // GRAPHICS</div>
-                <div id="gpu-freq-text" class="font-data-mono text-base md:text-lg text-on-surface mt-0.5">0 MHz</div>
-                <div id="gpu-model-text" class="font-body-md text-[11px] text-on-surface-variant/80 max-w-[180px] truncate mt-0.5">GPU Initializing...</div>
-                <div id="gpu-vram-text" class="font-data-mono-sm text-[10px] text-secondary/80 mt-0.5">VRAM: 0.0 / 0.0 GB</div>
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Base Clock:</span>
+                <span id="sys-cpu-base" class="text-on-surface">N/A</span>
               </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Sidebar Overview Column (Thermals & Network) -->
-        <div id="sidebar-overview-col" class="col-span-1 md:col-span-4 flex flex-col gap-4">
-          
-          <!-- Thermal Dynamics Panel -->
-          <div class="card-thermals hud-glass rounded-xl p-4 flex-1 flex flex-col justify-between">
-            <div class="flex justify-between items-center mb-3">
-              <div class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-error text-base">device_thermostat</span>
-                <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">THERMAL DYNAMICS</h2>
-              </div>
-              <span class="text-[10px] font-label-caps text-on-surface-variant/60">LIVE °C</span>
-            </div>
-
-            <div class="space-y-3">
-              <!-- CPU Temp -->
-              <div>
-                <div class="flex justify-between items-end mb-1 text-xs font-data-mono">
-                  <span class="text-on-surface">CPU Core</span>
-                  <span id="temp-cpu-text" class="text-primary font-bold">N/A</span>
-                </div>
-                <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
-                  <div id="temp-cpu-bar" class="h-full bg-primary" style="width: 0%;"></div>
-                </div>
-              </div>
-
-              <!-- GPU Temp -->
-              <div>
-                <div class="flex justify-between items-end mb-1 text-xs font-data-mono">
-                  <span class="text-on-surface">GPU Die</span>
-                  <span id="temp-gpu-text" class="text-secondary font-bold">N/A</span>
-                </div>
-                <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
-                  <div id="temp-gpu-bar" class="h-full bg-secondary" style="width: 0%;"></div>
-                </div>
-              </div>
-
-              <!-- SSD Temp -->
-              <div>
-                <div class="flex justify-between items-end mb-1 text-xs font-data-mono">
-                  <span class="text-on-surface">NVMe SSD</span>
-                  <span id="temp-ssd-text" class="text-on-surface font-bold">N/A</span>
-                </div>
-                <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
-                  <div id="temp-ssd-bar" class="h-full bg-outline-variant" style="width: 0%;"></div>
-                </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-on-surface-variant">L3 Cache:</span>
+                <span id="sys-cpu-cache" class="text-on-surface">Unified L3 Cache</span>
               </div>
             </div>
           </div>
 
-          <!-- Network I/O Panel -->
-          <div class="card-network hud-glass rounded-xl p-4 flex-1 relative overflow-hidden flex flex-col justify-between">
-            <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-primary/10 to-transparent pointer-events-none"></div>
-
-            <div class="flex justify-between items-center mb-2">
-              <div class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-primary text-base">wifi_tethering</span>
-                <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">NETWORK I/O</h2>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span id="net-state-dot" class="w-2 h-2 rounded-full bg-primary active-pulse-cyan"></span>
-              </div>
+          <!-- Graphics Subsystem Card -->
+          <div class="hud-glass rounded-xl p-5 flex flex-col justify-between">
+            <div class="flex items-center gap-2 mb-3 border-b border-outline-variant/20 pb-2">
+              <span class="material-symbols-outlined text-secondary text-xl">videogame_asset</span>
+              <h2 class="font-label-caps text-sm text-secondary tracking-widest font-bold">GRAPHICS SUBSYSTEM</h2>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 relative z-10 my-1">
-              <div>
-                <div class="font-label-caps text-[10px] text-on-surface-variant mb-0.5">DOWNLINK</div>
-                <div class="font-data-mono text-xl text-primary flex items-baseline gap-1">
-                  <span id="net-down-text">0</span>
-                  <span id="net-down-unit" class="text-xs text-on-surface-variant opacity-70">Mbps</span>
-                </div>
-              </div>
-              <div>
-                <div class="font-label-caps text-[10px] text-on-surface-variant mb-0.5">UPLINK</div>
-                <div class="font-data-mono text-xl text-on-surface flex items-baseline gap-1">
-                  <span id="net-up-text">0</span>
-                  <span id="net-up-unit" class="text-xs text-on-surface-variant opacity-70">Mbps</span>
-                </div>
-              </div>
-            </div>
-
-            <div id="net-adapter-badge" class="font-data-mono-sm text-[10px] text-on-surface-variant/80 truncate px-2 py-0.5 bg-surface-container-high/60 rounded border border-outline-variant/30 mt-1">
-              Active Adapter
+            <div id="sys-gpus-container" class="space-y-3 text-xs font-data-mono flex-1 overflow-y-auto">
+              <div class="text-on-surface-variant/60 py-2">Discovering GPU adapters...</div>
             </div>
           </div>
 
-        </div>
-
-        <!-- Bottom Row: Memory & Storage -->
-        <div id="bottom-memory-storage-row" class="col-span-1 md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-4">
-          
-          <!-- Volatile Memory (RAM) Card -->
-          <div class="card-ram hud-glass rounded-xl p-4 hud-bracket-tl">
-            <div class="flex justify-between items-center mb-3">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary text-base">memory_alt</span>
-                <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">VOLATILE MEMORY</h2>
-              </div>
-              <span id="ram-type-badge" class="font-data-mono text-xs px-2 py-0.5 bg-surface-container-high rounded border border-outline-variant/30 text-on-surface">DDR5</span>
+          <!-- Memory Subsystem Card -->
+          <div class="hud-glass rounded-xl p-5 flex flex-col justify-between">
+            <div class="flex items-center gap-2 mb-3 border-b border-outline-variant/20 pb-2">
+              <span class="material-symbols-outlined text-primary text-xl">memory_alt</span>
+              <h2 class="font-label-caps text-sm text-primary tracking-widest font-bold">MEMORY SUBSYSTEM</h2>
             </div>
 
-            <div class="flex flex-col gap-2.5">
-              <div class="flex justify-between items-end">
-                <div class="flex items-baseline gap-1">
-                  <span id="ram-used-text" class="font-display-lg text-3xl font-bold text-on-surface">0.0</span>
-                  <span class="font-data-mono text-sm text-primary">GB</span>
-                </div>
-                <span id="ram-total-text" class="font-data-mono text-xs text-on-surface-variant mb-1">/ 0.0 GB</span>
+            <div class="space-y-2.5 text-xs font-data-mono flex-1">
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Installed Capacity:</span>
+                <span id="sys-ram-total" class="text-on-surface font-bold">0.0 GB (0 MB)</span>
               </div>
-
-              <!-- 3-Segment RAM Distribution Bar -->
-              <div class="h-2 w-full bg-surface-container-lowest rounded-sm overflow-hidden flex border border-outline-variant/30">
-                <div id="ram-bar-in-use" class="h-full bg-primary transition-all duration-500" style="width: 0%;"></div>
-                <div id="ram-bar-cached" class="h-full bg-secondary/70 transition-all duration-500" style="width: 0%;"></div>
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Memory Technology:</span>
+                <span id="sys-ram-type" class="text-on-surface">DDR5</span>
               </div>
-
-              <!-- Distribution Legend -->
-              <div class="flex justify-between font-label-caps text-[9px] text-on-surface-variant mt-0.5">
-                <span class="flex items-center gap-1">
-                  <span class="w-2 h-2 bg-primary rounded-full"></span>
-                  <span id="ram-legend-in-use">IN USE (0%)</span>
-                </span>
-                <span class="flex items-center gap-1">
-                  <span class="w-2 h-2 bg-secondary/70 rounded-full"></span>
-                  <span id="ram-legend-cached">CACHED (0%)</span>
-                </span>
-                <span class="flex items-center gap-1">
-                  <span class="w-2 h-2 bg-surface-container-high border border-outline-variant/50 rounded-full"></span>
-                  <span id="ram-legend-free">FREE (100%)</span>
-                </span>
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Clock Speed:</span>
+                <span id="sys-ram-speed" class="text-on-surface">N/A</span>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-on-surface-variant">Commit Limit:</span>
+                <span id="sys-ram-committed" class="text-on-surface">0 MB</span>
               </div>
             </div>
           </div>
 
-          <!-- Non-Volatile Storage (SSD) Card -->
-          <div class="card-ssd hud-glass rounded-xl p-4 hud-bracket-br">
-            <div class="flex justify-between items-center mb-3">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-secondary text-base">storage</span>
-                <h2 class="font-label-caps text-xs text-on-surface-variant tracking-[0.2em]">NON-VOLATILE STORAGE</h2>
-              </div>
-              <span id="ssd-type-badge" class="font-data-mono text-xs px-2 py-0.5 bg-surface-container-high rounded border border-outline-variant/30 text-on-surface">NVMe</span>
+          <!-- Operating System & Motherboard Card -->
+          <div class="hud-glass rounded-xl p-5 flex flex-col justify-between">
+            <div class="flex items-center gap-2 mb-3 border-b border-outline-variant/20 pb-2">
+              <span class="material-symbols-outlined text-on-surface text-xl">computer</span>
+              <h2 class="font-label-caps text-sm text-on-surface tracking-widest font-bold">OPERATING SYSTEM & PLATFORM</h2>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 h-full items-center">
-              <div class="flex flex-col justify-center border-r border-outline-variant/20 pr-3">
-                <div class="font-label-caps text-[10px] text-on-surface-variant mb-1">READ SPEED</div>
-                <div class="font-data-mono text-2xl font-bold text-secondary drop-shadow-[0_0_8px_rgba(209,188,255,0.4)] flex items-baseline gap-1">
-                  <span id="ssd-read-text">0</span>
-                  <span class="text-xs text-on-surface-variant opacity-70">MB/s</span>
-                </div>
+            <div class="space-y-2.5 text-xs font-data-mono flex-1">
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Operating System:</span>
+                <span id="sys-os-name" class="text-on-surface font-bold truncate max-w-[280px]">Windows</span>
               </div>
-
-              <div class="flex flex-col justify-center pl-2">
-                <div class="font-label-caps text-[10px] text-on-surface-variant mb-1">WRITE SPEED</div>
-                <div class="font-data-mono text-2xl font-bold text-on-surface flex items-baseline gap-1">
-                  <span id="ssd-write-text">0</span>
-                  <span class="text-xs text-on-surface-variant opacity-70">MB/s</span>
-                </div>
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">Motherboard:</span>
+                <span id="sys-motherboard" class="text-on-surface truncate max-w-[280px]">Standard OEM</span>
               </div>
-            </div>
-
-            <div id="ssd-drive-info" class="font-data-mono text-[10px] text-on-surface-variant/70 truncate mt-2">
-              C: Local Drive
+              <div class="flex justify-between items-center py-1 border-b border-outline-variant/10">
+                <span class="text-on-surface-variant">BIOS Version:</span>
+                <span id="sys-bios" class="text-on-surface">N/A</span>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-on-surface-variant">Telemetry Engine:</span>
+                <span class="text-primary font-bold">NETA_OS Native Daemon</span>
+              </div>
             </div>
           </div>
 

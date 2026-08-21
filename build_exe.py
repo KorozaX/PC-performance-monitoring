@@ -51,6 +51,7 @@ HIDDEN_IMPORTS = [
     "src.telemetry.ram_collector",
     "src.telemetry.storage_collector",
     "src.telemetry.network_collector",
+    "src.telemetry.process_collector",
     "src.telemetry.thermals",
     "src.gui",
     "src.gui.window_manager",

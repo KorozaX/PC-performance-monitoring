@@ -1,177 +1,100 @@
-# Project: Glassmorphism Laptop Hardware Performance HUD
+# Project: Glassmorphism Performance HUD Refactoring & Enhancement
 
 ## Architecture
-- **Windowing & GUI Framework**: Python 3.12 + `pywebview` 6.2.1 using Microsoft Edge WebView2 Evergreen runtime.
-  - Transparent, borderless window (`frameless=True, transparent=True, easy_drag=True`).
-  - Hardware-accelerated CSS `backdrop-filter: blur(20px)` glassmorphism with Electric Cyan (`#00daf3`) and Obsidian Purple (`#d1bcff`) accents.
-  - HUD visual elements: SVG circular progress meters ($r=45$, stroke-dasharray 283), HUD corner brackets (`.hud-bracket-tl`, `.hud-bracket-br`), dot-matrix background pattern, Space Grotesk / JetBrains Mono typography.
-  - Dual Screen Modes: Standard HUD Overlay Mode (~1200x800) and Ultra-Wide Mode (1920x550) for secondary LCD sensor screens.
-- **Hardware Telemetry Engine**: Asynchronous, non-blocking background daemon thread (`TelemetryEngine`) polling at ~1000ms intervals with < 0.25% CPU overhead.
-  - Multi-GPU Detection: Pure ctypes NVML for NVIDIA discrete GPUs (load, VRAM, clock, temperature) + Windows PDH / DXGI / WMI for Intel/AMD integrated GPUs.
-  - CPU: Model, base/boost frequency, load %, core/thread utilization, package temperature with graceful fallback.
-  - RAM: `GlobalMemoryStatusEx` Win32 API for ultra-low latency (<0.03ms) used/free/total GB, utilization %, speed badge.
-  - Storage: Delta throughput (Read/Write MB/s), drive utilization %, total capacity.
-  - Network: Delta throughput (Download/Upload Mbps and MB/s), active network adapter, connection state.
-  - Fault-tolerance: Comprehensive try/catch guards with structured `"N/A"` fallbacks for unexposed or unprivileged sensors.
-- **IPC / Bridge**: `pywebview.api` JS-Python bridge + `window.pywebview.api` / evaluated JS event dispatch for instant UI updates.
-- **Build & Packaging**: PyInstaller 6.21.0 `--onefile --noconsole` compiling Python scripts and embedded web assets (`ui/`) into a standalone Windows binary `dist/GlassPerformanceHUD.exe`.
+- **Desktop Runtime**: Python + `pywebview` (Edge Chromium / WebView2 engine) with frameless, transparent glassmorphism UI.
+- **Backend Telemetry Engine (`src/telemetry/`)**: High-performance asynchronous telemetry pipeline with low CPU polling overhead (< 1-2% budget, < 5ms sampling).
+  - `engine.py`: Telemetry coordinator, asynchronous background hardware discovery, Tick-0 instant snapshot emitter, cached hardware profile loader (`.cache/hw_profile.json`).
+  - `cpu_collector.py`: CPU utilization, core clock, topology, multi-layered temperature probe (ACPI / WMI / fallback).
+  - `gpu_collector.py`: Simultaneous DXGI multi-GPU adapter discovery, WDDM engine utilization smoothing (PDH parity with Task Manager), NVML/ADL sensor queries.
+  - `ram_collector.py`: High-precision memory statistics (`used_mb`, `free_mb`, `total_mb`, `available_mb`, `committed_mb`, `commit_limit_mb`, percentages, DDR speed/type).
+  - `process_collector.py`: Ultra-fast native `NtQuerySystemInformation(5)` scanner extracting Top 5 resource consumers (CPU %, Working Set MB/%, Disk I/O MB/s, GPU Engine %).
+  - `storage_collector.py`: Drive capacities, read/write I/O throughput, NVMe/SATA IOCTL SMART thermal probes.
+  - `thermals.py`: Consolidated thermal dynamics aggregation (CPU, dGPU, iGPU, SSD) with resilient `"N/A"` fallback.
+  - `network_collector.py`: Real-time network throughput and active interface stats.
+- **Bridge API (`src/bridge/api.py`)**: `HUDBridgeAPI` exposing Python telemetry snapshots, window controls (`minimize_window`, `restore_window`, `close_window`, `toggle_maximize`, `is_maximized`, `set_screen_mode`, `toggle_pin_top`), and view interactions to JavaScript.
+- **Frontend UI (`ui/`)**: Aetheric HUD Glassmorphism interface.
+  - `index.html`: Frameless window structure, custom titlebar controls, responsive container layouts, view router containers (`#view-monitor`, `#view-telemetry`, `#view-system`).
+  - `styles/glass_hud.css` & `styles/tailwind.css`: Aetheric tokens (`#0f1419`, `#00daf3`, `#d1bcff`, 20px blur, glowing borders), fluid responsive breakpoints (Compact <900px, Standard 900-1440px / 1200x800, Ultrawide 1920x550 / >1440px).
+  - `js/app.js`: Bridge client, view navigation state manager, dynamic DOM updaters for multi-GPU, Top 5 processes, RAM, Thermals, and System inventory.
+  - `js/gauges.js`: SVG circular/linear HUD telemetry gauges with animation easing.
+- **Testing & Packaging Track (`tests/`, `build_exe.py`)**: Multi-tiered test suite (Tiers 1-5) and PyInstaller Windows standalone executable generator.
+
+## Code Layout
+- `src/main.py`: Application entry point (`--gui`, `--benchmark`, `--test-telemetry`).
+- `src/telemetry/`: Telemetry collectors and hardware discovery.
+  - `src/telemetry/engine.py`
+  - `src/telemetry/cpu_collector.py`
+  - `src/telemetry/gpu_collector.py`
+  - `src/telemetry/ram_collector.py`
+  - `src/telemetry/process_collector.py`
+  - `src/telemetry/storage_collector.py`
+  - `src/telemetry/thermals.py`
+  - `src/telemetry/network_collector.py`
+- `src/bridge/api.py`: Python-to-JS bridge API methods.
+- `src/gui/window_manager.py`: Window creation, flags, and async initialization.
+- `ui/`: HTML/CSS/JS web assets.
+  - `ui/index.html`
+  - `ui/styles/glass_hud.css`
+  - `ui/styles/tailwind.css`
+  - `ui/js/app.js`
+  - `ui/js/gauges.js`
+- `tests/`: Multi-tier test suite.
+  - `tests/test_runner.py`
+  - `tests/test_tier1_features.py`
+  - `tests/test_tier2_boundaries.py`
+  - `tests/test_tier3_pairwise.py`
+  - `tests/test_tier4_workloads.py`
+  - `tests/test_adversarial_faults.py`
+  - `tests/test_adversarial_stress.py`
+  - `tests/test_challenger_stress.py`
+- `build_exe.py`: PyInstaller bundling script for `dist/GlassPerformanceHUD.exe`.
 
 ## Feature Inventory
-Every feature from the survey phase is enumerated below and assigned to a milestone:
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Glassmorphism HUD Window | Borderless, transparent window with 20px backdrop blur, luminous border, HUD corner brackets | M2 | Survey / Spec Miner |
-| 2 | Dual Screen Modes | Standard HUD Mode (1200x800) and Ultra-Wide Secondary Screen Mode (1920x550) with layout reflow | M2, M3 | Survey / Spec Miner |
-| 3 | Window Controls & Pinning | Draggable header/body (`pywebview-drag-region`), Pin Always-on-Top toggle, Minimize, Close | M3 | Survey / Arch Explorer |
-| 4 | CPU Telemetry & Gauges | Model name, GHz clock, CPU load %, core/thread breakdown, temperature (°C / N/A), SVG circular gauge | M1, M2 | Survey / Telemetry Explorer |
-| 5 | Multi-GPU Detection & Monitoring | Separate detection & metrics for integrated GPU (Intel/AMD) AND dedicated GPU (NVIDIA RTX/AMD), VRAM, load %, clock, temp | M1, M2 | Survey / Telemetry Explorer |
-| 6 | RAM Telemetry & Distribution | Memory utilization %, used GB, free GB, total GB, speed/type badge, 3-segment bar (In-Use/Cached/Free) | M1, M2 | Survey / Telemetry Explorer |
-| 7 | Storage / SSD Telemetry | Drive detection, Read/Write throughput (MB/s), active time %, total capacity, drive temp | M1, M2 | Survey / Telemetry Explorer |
-| 8 | Network I/O Telemetry | Active adapter name, real-time download & upload bandwidth (Mbps / MB/s), connection state | M1, M2 | Survey / Telemetry Explorer |
-| 9 | Thermal Dynamics Panel | Consolidated thermal monitors with dynamic color gradient (<60°C Cyan, 60-79°C Purple, ≥80°C Alert Red) | M1, M2 | Survey / Spec Miner |
-| 10 | Low Overhead & Fault Tolerance | <1-2% idle CPU, async non-blocking polling, zero crashing on missing sensors, fallback to "N/A" | M1 | Survey / Telemetry Explorer |
-| 11 | Standalone Windows .exe Build | Single-file PyInstaller binary (`GlassPerformanceHUD.exe`) with bundled assets and offline fonts | M4 | Survey / Arch Explorer |
-| 12 | Automated Verification & CLI | Headless verification CLI (`--test-telemetry`, `--benchmark`), comprehensive unit & contract tests | E2E-1, M1 | Survey / Arch Explorer |
+| 1 | F1.1 Adaptive Breakpoints | Responsive CSS layouts for Compact, Standard (1200x800), and Ultrawide (1920x550) without text clipping or black voids | M2 | ORIGINAL_REQUEST §R1 |
+| 2 | F1.2 Maximize/Restore Control | Custom window titlebar Maximize/Restore button (`#btn-max`) with icon toggle and `toggle_maximize()` bridge method | M1, M2 | ORIGINAL_REQUEST §R1 |
+| 3 | F1.3 Frameless Window Controls | Polished draggable titlebar, Pin-to-top, Minimize, Maximize, and Close integration | M2 | ORIGINAL_REQUEST §R1 |
+| 4 | F2.1 Simultaneous Multi-GPU Display | Render all detected physical GPUs (iGPU + dGPU) simultaneously side-by-side without tab hiding | M1, M2 | ORIGINAL_REQUEST §R2 |
+| 5 | F2.2 Task Manager GPU Parity | Smooth WDDM/DXGI engine utilization calculation matching Windows Task Manager without erratic spikes | M1 | ORIGINAL_REQUEST §R2 |
+| 6 | F2.3 Per-GPU Telemetry Metrics | VRAM Used/Total in GB and %, GPU clock, thermal readings, and dedicated/integrated badges | M1, M2 | ORIGINAL_REQUEST §R2 |
+| 7 | F3.1 Ultra-Fast Process Scanner | Low-overhead process collector using `NtQuerySystemInformation(5)` (< 5ms polling, < 0.05% CPU overhead) | M1 | ORIGINAL_REQUEST §R3 |
+| 8 | F3.2 Top 5 Processes Ranking | Live ranking by CPU%, Working Set RAM (MB and %), Disk I/O (MB/s), and GPU Engine % | M1 | ORIGINAL_REQUEST §R3 |
+| 9 | F3.3 Top 5 Processes UI Widget | Glassmorphic live-updating table widget embedded in Monitor & Telemetry views | M2 | ORIGINAL_REQUEST §R3 |
+| 10 | F4.1 Async Hardware Discovery | Background threaded initialization of DXGI, NVML, WMI, and SMBIOS for non-blocking startup | M1 | ORIGINAL_REQUEST §R4 |
+| 11 | F4.2 Instant Skeleton & Tick-0 | Sub-0.5s cold launch via immediate window display and instant default fallback snapshot | M1, M2 | ORIGINAL_REQUEST §R4 |
+| 12 | F4.3 Hardware Profile Caching | Local `.cache/hw_profile.json` caching for instant warm-start hardware metadata retrieval | M1 | ORIGINAL_REQUEST §R4 |
+| 13 | F5.1 Enhanced RAM Telemetry | Payload expansion to include exact numerical `used_mb`, `free_mb`, `total_mb`, `available_mb`, `committed_mb` | M1 | ORIGINAL_REQUEST §R5 |
+| 14 | F5.2 Enhanced RAM UI Card | RAM card rendering dual MB and GB values, percentage gauges, and committed/available memory bars | M2 | ORIGINAL_REQUEST §R5 |
+| 15 | F6.1 Interactive Tab Navigation | Navigation pill buttons for `MONITOR`, `TELEMETRY`, `SYSTEM` with view routing and animations | M2 | ORIGINAL_REQUEST §R6 |
+| 16 | F6.2 Monitor View | Core Glassmorphism HUD (CPU, Multi-GPU, RAM, Top 5 Processes, Thermals, Network, Storage) | M2 | ORIGINAL_REQUEST §R6 |
+| 17 | F6.3 Telemetry View | Deep metrics view (per-core CPU bars, live I/O metrics, network interface throughput, GPU engines) | M2 | ORIGINAL_REQUEST §R6 |
+| 18 | F6.4 System View | Complete hardware inventory sheet (CPU microarchitecture, RAM specs, GPU driver, Storage NVMe Gen, OS build) | M2 | ORIGINAL_REQUEST §R6 |
+| 19 | F7.1 Multi-Layer CPU Thermals | CPU temperature detection for AMD Ryzen and Intel Core with multi-layered fallback and graceful `"N/A"` | M1 | ORIGINAL_REQUEST §R7 |
+| 20 | F7.2 SSD SMART Thermal Sensors | Drive temperature detection for NVMe/SATA SSDs via Storage IOCTLs and SMART queries with graceful `"N/A"` | M1 | ORIGINAL_REQUEST §R7 |
+| 21 | F7.3 Consolidated Thermals UI | Thermal dynamics card in UI displaying CPU, dGPU, iGPU, and SSD temperatures simultaneously | M2 | ORIGINAL_REQUEST §R7 |
+| 22 | F8.1 E2E Test Suite Expansion | Full requirement test coverage across Tiers 1-5 verifying 100% test pass rate | E2E, M3 | ORIGINAL_REQUEST §R8 |
+| 23 | F8.2 PyInstaller Executable Build | Standalone executable generation in `dist/GlassPerformanceHUD.exe` with bundled assets and verified launch | M3 | ORIGINAL_REQUEST §R8 |
+| 24 | F8.3 Git Sync | Git commit of all changes with clean commit message and push to remote repository | M3 | ORIGINAL_REQUEST §R8 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| E2E-1 | E2E Testing Suite & Infra | Requirements-driven opaque-box test suite (Tiers 1-5, 184 tests, `TEST_READY.md`) | none | DONE |
-| M1 | Hardware Telemetry Engine | High-performance, fault-tolerant Python telemetry engine (CPU, Multi-GPU, RAM, SSD, Net) | none | DONE |
-| M2 | Glassmorphism HUD Frontend | Modern HUD UI with SVG gauges, HUD brackets, design tokens, dual-screen responsive CSS | none | DONE |
-| M3 | HUD Controller & Bridge | PyWebView window manager, JS-Python bridge, drag/pin/mode controllers | M1, M2 | DONE |
-| M4 | Standalone .exe Packaging | PyInstaller single-file build (`dist/GlassPerformanceHUD.exe`), resource embedding, verification | M1, M2, M3 | DONE |
-| M5 | Final E2E Pass & Adversarial Hardening | 100% E2E test pass (184/184 tests across Tiers 1-5) + Final Forensic Audit CLEAN | E2E-1, M4 | DONE |
+| E2E | E2E Testing Track | Independent opaque-box test suite for R1-R8 (Tiers 1-4) publishing `TEST_READY.md` | none | DONE |
+| M1 | Backend Core & Telemetry Engine | R2 (Multi-GPU & Task Manager parity), R3 (`NtQuerySystemInformation` process collector), R4 (Async discovery & <0.5s launch), R5 (Enhanced RAM metrics in MB/GB), R7 (CPU & SSD Thermals), and Bridge API window controls | none | DONE |
+| M2 | Frontend Glassmorphism UI & Navigation | R1 (Adaptive breakpoints & Maximize button), R2 (Simultaneous Multi-GPU widgets), R3 (Top 5 Processes UI table), R5 (Enhanced RAM MB/GB card), R6 (Monitor, Telemetry, System tab routing), R7 (Thermal dynamics card) | M1 | IN_PROGRESS |
+| M3 | Final Verification, Packaging & GitHub Sync | Pass 100% E2E test suite (Tiers 1-4), Tier 5 adversarial hardening, PyInstaller `dist/GlassPerformanceHUD.exe` build verification, and Git sync | M1, M2, E2E | PLANNED |
 
 ## Interface Contracts
 
-### TelemetryEngine ↔ HUD Bridge Contract (`src/telemetry/` ↔ `src/bridge/`)
-The `TelemetryEngine` produces an immutable JSON snapshot dictionary matching the following schema:
-```json
-{
-  "timestamp": 1724220000.123,
-  "cpu": {
-    "model": "13th Gen Intel(R) Core(TM) i9-13900HX",
-    "load_pct": 14.5,
-    "freq_ghz": 3.80,
-    "cores_physical": 24,
-    "cores_logical": 32,
-    "temperature_c": 52.0,
-    "per_core_load": [12.0, 18.5, 9.2, ...]
-  },
-  "gpus": [
-    {
-      "id": 0,
-      "type": "dedicated",
-      "vendor": "NVIDIA",
-      "model": "NVIDIA GeForce RTX 4080 Laptop GPU",
-      "load_pct": 32.0,
-      "freq_mhz": 1850,
-      "vram_used_gb": 4.2,
-      "vram_total_gb": 12.0,
-      "temperature_c": 58.0
-    },
-    {
-      "id": 1,
-      "type": "integrated",
-      "vendor": "Intel",
-      "model": "Intel(R) UHD Graphics",
-      "load_pct": 5.0,
-      "freq_mhz": "N/A",
-      "vram_used_gb": 0.6,
-      "vram_total_gb": "N/A",
-      "temperature_c": "N/A"
-    }
-  ],
-  "ram": {
-    "load_pct": 38.2,
-    "used_gb": 24.5,
-    "free_gb": 39.5,
-    "total_gb": 64.0,
-    "type_badge": "DDR5-6000",
-    "distribution": {
-      "in_use_pct": 38,
-      "cached_pct": 15,
-      "free_pct": 47
-    }
-  },
-  "storage": {
-    "drives": [
-      {
-        "device": "C:",
-        "type_badge": "NVMe Gen4",
-        "used_gb": 480.2,
-        "total_gb": 1024.0,
-        "load_pct": 12.0,
-        "read_mbs": 125.4,
-        "write_mbs": 48.2,
-        "temperature_c": 41.0
-      }
-    ]
-  },
-  "network": {
-    "interface": "Wi-Fi 6E (Intel Killer AX1675i)",
-    "connected": true,
-    "downlink_mbps": 142.5,
-    "uplink_mbps": 28.4,
-    "downlink_mbs": 17.8,
-    "uplink_mbs": 3.55
-  },
-  "thermals": {
-    "cpu_c": 52.0,
-    "gpu_c": 58.0,
-    "ssd_c": 41.0
-  }
-}
-```
-
-### UI JavaScript Bridge Contract (`ui/app.js` ↔ `src/bridge/api.py`)
-- `window.pywebview.api.get_telemetry_snapshot()` -> Returns the latest telemetry JSON snapshot.
-- `window.pywebview.api.set_screen_mode(mode_name)` -> `"standard"` (1200x800) or `"ultrawide"` (1920x550).
-- `window.pywebview.api.toggle_pin_top()` -> Returns boolean `is_pinned`.
-- `window.pywebview.api.minimize_window()` -> Minimizes HUD window.
-- `window.pywebview.api.close_window()` -> Closes HUD application.
-- `window.onTelemetryUpdate(snapshot)` -> JS callback invoked automatically every tick by the Python daemon.
-
-## Code Layout
-```
-Performance Stats/
-├── src/
-│   ├── __init__.py
-│   ├── main.py                     # Entry point & CLI handler
-│   ├── telemetry/
-│   │   ├── __init__.py
-│   │   ├── engine.py               # Background daemon coordinator
-│   │   ├── cpu_collector.py        # CPU load, clock, temp
-│   │   ├── gpu_collector.py        # Multi-GPU (NVML + PDH/DXGI)
-│   │   ├── ram_collector.py        # RAM Win32 GlobalMemoryStatusEx
-│   │   ├── storage_collector.py    # SSD throughput delta & stats
-│   │   └── network_collector.py    # Net bandwidth delta & stats
-│   ├── gui/
-│   │   ├── __init__.py
-│   │   ├── window_manager.py       # PyWebView window creation & styling
-│   │   └── dnd_pin.py              # Window dragging & pin always-on-top
-│   └── bridge/
-│       ├── __init__.py
-│       └── api.py                  # PyWebView JS API & event dispatcher
-├── ui/
-│   ├── index.html                  # Glassmorphism HUD HTML
-│   ├── styles/
-│   │   ├── tailwind.css            # Tailwind / Design tokens CSS
-│   │   └── glass_hud.css           # Glassmorphism, animations & brackets
-│   ├── js/
-│   │   ├── app.js                  # HUD UI controller & bindings
-│   │   └── gauges.js               # SVG circular gauges & bars
-│   └── fonts/                      # Local bundled fonts (Space Grotesk, JetBrains Mono)
-├── tests/
-│   ├── test_runner.py              # Test runner executing all tiers
-│   ├── tier1_feature_tests.py      # Tier 1: Feature coverage (>=5 per feature)
-│   ├── tier2_boundary_tests.py     # Tier 2: Boundary & sensor fallback tests
-│   ├── tier3_interaction_tests.py  # Tier 3: Pairwise cross-feature tests
-│   └── tier4_scenario_tests.py     # Tier 4: Real-world laptop workloads
-├── build_exe.py                    # PyInstaller packaging script
-├── requirements.txt                # Dependencies specification
-├── PROJECT.md                      # Global architecture & milestones
-├── TEST_INFRA.md                   # Test infrastructure specification
-└── ORIGINAL_REQUEST.md             # Verbatim user request record
-```
+### Python Bridge (`src/bridge/api.py`) ↔ Frontend JavaScript (`ui/js/app.js`)
+- `get_telemetry_snapshot() -> dict`
+- Window Control Bridge APIs:
+  - `toggle_maximize() -> bool`
+  - `is_maximized() -> bool`
+  - `minimize_window()`
+  - `restore_window()`
+  - `close_window()`
+  - `set_screen_mode(mode: str)`
+  - `toggle_pin_top() -> bool`
+  - `switch_tab(tab_name: str)`

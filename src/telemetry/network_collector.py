@@ -214,8 +214,11 @@ class NetworkCollector:
         self.prev_time = now
 
         return {
+            "adapter_name": active_name,
             "interface": active_name,
             "connected": is_connected,
+            "download_mbps": round(downlink_mbps, 1),
+            "upload_mbps": round(uplink_mbps, 1),
             "downlink_mbps": round(downlink_mbps, 1),
             "uplink_mbps": round(uplink_mbps, 1),
             "downlink_mbs": round(downlink_mbs, 2),
@@ -229,8 +232,11 @@ class NetworkCollector:
     def get_fallback(self) -> Dict[str, Any]:
         """Returns safe default struct in case of unexpected failure."""
         return {
+            "adapter_name": "Disconnected",
             "interface": "Disconnected",
             "connected": False,
+            "download_mbps": 0.0,
+            "upload_mbps": 0.0,
             "downlink_mbps": 0.0,
             "uplink_mbps": 0.0,
             "downlink_mbs": 0.0,

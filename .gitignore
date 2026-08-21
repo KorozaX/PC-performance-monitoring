@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.class
@@ -9,6 +9,8 @@ venv/
 ENV/
 build/
 *.egg-info/
+.cache/
+.pytest_cache/
 
 # Agents & logs
 .agents/

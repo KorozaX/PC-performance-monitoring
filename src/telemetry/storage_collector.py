@@ -2,15 +2,16 @@
 src/telemetry/storage_collector.py
 High-performance Storage Telemetry Collector for Windows.
 Monitors logical partitions and physical drives, calculating delta read/write throughput (MB/s),
-active time %, total/used capacity (GB), drive technology badges, and temperatures.
+active time %, total/used/free capacity (GB), drive technology badges, and NVMe/SATA SMART temperatures.
 """
 
 import ctypes
 from ctypes import wintypes
 import logging
+import struct
 import sys
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import psutil
 
@@ -54,7 +55,7 @@ BUS_TYPE_MAP = {
 class StorageCollector:
     """
     Monitors logical and physical storage drives, calculating delta read/write throughput,
-    active time percentage, capacity, and drive technology badges.
+    active time percentage, capacity, drive technology badges, and temperatures.
     """
 
     def __init__(self):
@@ -154,6 +155,59 @@ class StorageCollector:
 
         return phys_id, badge
 
+    def _query_drive_temperature(self, drive_letter: str, phys_id: Optional[str]) -> Union[float, str]:
+        """Queries storage device temperature via DeviceIoControl StorageDeviceTemperatureProperty."""
+        if sys.platform != "win32":
+            return "N/A"
+
+        targets = []
+        if phys_id:
+            targets.append(f"\\\\.\\{phys_id}")
+        targets.append(f"\\\\.\\{drive_letter}")
+
+        for target in targets:
+            try:
+                h = ctypes.windll.kernel32.CreateFileW(
+                    target,
+                    0,  # Query access without elevation
+                    1 | 2,  # FILE_SHARE_READ | FILE_SHARE_WRITE
+                    None,
+                    3,  # OPEN_EXISTING
+                    0,
+                    None,
+                )
+                if h == -1 or h == 0xFFFFFFFFFFFFFFFF:
+                    continue
+
+                query = STORAGE_PROPERTY_QUERY()
+                query.PropertyId = 8  # StorageDeviceTemperatureProperty
+                query.QueryType = 0   # PropertyStandardQuery
+                buf = ctypes.create_string_buffer(512)
+                bytes_ret = wintypes.DWORD(0)
+
+                ok = ctypes.windll.kernel32.DeviceIoControl(
+                    h,
+                    IOCTL_STORAGE_QUERY_PROPERTY,
+                    ctypes.byref(query),
+                    ctypes.sizeof(query),
+                    buf,
+                    512,
+                    ctypes.byref(bytes_ret),
+                    None,
+                )
+                ctypes.windll.kernel32.CloseHandle(h)
+
+                if ok and bytes_ret.value >= 28:
+                    info_count = struct.unpack_from("<H", buf.raw, 12)[0]
+                    if info_count > 0:
+                        temp_val = struct.unpack_from("<h", buf.raw, 26)[0]
+                        if 10.0 <= temp_val <= 110.0:
+                            return round(float(temp_val), 1)
+            except Exception:
+                continue
+
+        return "N/A"
+
     def collect(self) -> Dict[str, Any]:
         """Polls current storage I/O and capacity in < 0.5ms."""
         now = time.perf_counter()
@@ -171,10 +225,15 @@ class StorageCollector:
         for drive_letter, info in self.device_cache.items():
             used_gb = 0.0
             total_gb = 0.0
+            free_gb = 0.0
+            utilization_pct = 0.0
             try:
                 usage = psutil.disk_usage(info["mount"])
                 total_gb = round(usage.total / (1024**3), 1)
                 used_gb = round(usage.used / (1024**3), 1)
+                free_gb = round(usage.free / (1024**3), 1)
+                if total_gb > 0:
+                    utilization_pct = round((used_gb / total_gb) * 100.0, 1)
             except Exception:
                 pass
 
@@ -190,20 +249,28 @@ class StorageCollector:
                 dw = max(0, c.write_bytes - p.write_bytes)
                 dt_io_ms = max(0, (c.read_time - p.read_time) + (c.write_time - p.write_time))
 
-                read_mbs = dr / (1024 * 1024 * dt)
-                write_mbs = dw / (1024 * 1024 * dt)
-                load_pct = min(100.0, max(0.0, (dt_io_ms / (dt * 1000.0)) * 100.0))
+                read_mbs = round(dr / (1024 * 1024 * dt), 1)
+                write_mbs = round(dw / (1024 * 1024 * dt), 1)
+                load_pct = round(min(100.0, max(0.0, (dt_io_ms / (dt * 1000.0)) * 100.0)), 1)
+
+            temp_c = self._query_drive_temperature(drive_letter, phys_id)
 
             drives_list.append(
                 {
+                    "letter": drive_letter,
                     "device": drive_letter,
+                    "type": info["type_badge"],
                     "type_badge": info["type_badge"],
                     "used_gb": used_gb,
                     "total_gb": total_gb,
-                    "load_pct": round(load_pct, 1),
-                    "read_mbs": round(read_mbs, 1),
-                    "write_mbs": round(write_mbs, 1),
-                    "temperature_c": "N/A",
+                    "free_gb": free_gb,
+                    "utilization_pct": utilization_pct,
+                    "load_pct": load_pct,
+                    "read_mbps": read_mbs,
+                    "read_mbs": read_mbs,
+                    "write_mbps": write_mbs,
+                    "write_mbs": write_mbs,
+                    "temperature_c": temp_c,
                 }
             )
 
@@ -221,12 +288,18 @@ class StorageCollector:
         return {
             "drives": [
                 {
+                    "letter": "C:",
                     "device": "C:",
-                    "type_badge": "Storage Drive",
+                    "type": "NVMe Gen4",
+                    "type_badge": "NVMe Gen4",
                     "used_gb": 0.0,
                     "total_gb": 0.0,
+                    "free_gb": 0.0,
+                    "utilization_pct": 0.0,
                     "load_pct": 0.0,
+                    "read_mbps": 0.0,
                     "read_mbs": 0.0,
+                    "write_mbps": 0.0,
                     "write_mbs": 0.0,
                     "temperature_c": "N/A",
                 }

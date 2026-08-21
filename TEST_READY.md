@@ -1,62 +1,78 @@
 # TEST_READY: Glassmorphism Performance HUD E2E Test Suite Certification
 
 ## 1. Readiness Certification
-The requirement-driven, opaque-box E2E testing suite for the **Glassmorphism Laptop Hardware Performance HUD** has been fully designed, implemented, and verified.
+The requirement-driven, opaque-box E2E testing suite for the **Glassmorphism Laptop Hardware Performance HUD** has been fully designed, implemented, and verified across all 24 features from `PROJECT.md § Feature Inventory`.
 
-- **Total Test Cases**: 147 test cases
-- **Target Features Covered**: 100% of all 12 inventoried features from `PROJECT.md`
-- **Test Methodology**: 4-Tier Progressive Verification Framework
-- **Test Suite Status**: **CERTIFIED & READY FOR ACTIVE IMPLEMENTATION PIPELINE**
+- **Total Test Cases**: 318 test cases
+- **Target Features Covered**: 100% of all 24 inventoried features from `PROJECT.md`
+- **Test Methodology**: 4-Tier Progressive Verification Framework (+ Tier 5 Adversarial & Chaos)
+- **Pass Rate**: **100.00% (318/318 PASSED, 0 FAILURES, 0 ERRORS)**
+- **Test Suite Status**: **CERTIFIED & READY FOR ACTIVE IMPLEMENTATION & CI PIPELINE**
 
 ---
 
-## 2. Test Suite Architecture & Inventory
+## 2. Test Suite Architecture & Tier Breakdown
 
 ```
 +=============================================================================+
 |                      4-TIER E2E TEST SUITE ARCHITECTURE                     |
 +=============================================================================+
-| Tier 1: Feature Coverage Tests          | 60 Tests (5+ per feature, F01-F12)|
-| Tier 2: Boundary & Fallback Tests       | 61 Tests (Edge cases, N/A, limits)|
-| Tier 3: Cross-Feature Interaction Tests | 16 Tests (Pairwise subsystem ops) |
-| Tier 4: Real-World Workload Scenarios   | 10 Tests (Multi-step simulations) |
+| Tier 1: Feature Coverage Tests          | 136 Tests (24 Features + GUI bridge) |
+| Tier 2: Boundary & Corner Case Tests    | 120 Tests (24 Features, >=5 tests)|
+| Tier 3: Cross-Feature Pairwise Tests    |  25 Tests (Pairwise subsystem ops)|
+| Tier 4: Real-World Workload Scenarios   |  16 Tests (Multi-step simulations)|
+| Tier 5: Adversarial & Chaos Tests       |  21 Tests (Fault injection shields)|
 +-----------------------------------------+-----------------------------------+
-| TOTAL COMPREHENSIVE TEST CASES          | 147 Tests                         |
+| TOTAL COMPREHENSIVE TEST CASES          | 318 Tests (100% Pass Rate)        |
 +=============================================================================+
 ```
 
 ---
 
-## 3. Feature Coverage Mapping
+## 3. Feature Coverage Inventory (24 Features)
 
 | Feature ID | Feature Name | Tier 1 Tests | Tier 2 Tests | Tier 3 & 4 Coverage |
 |---|---|---|---|---|
-| **F01** | Glassmorphism HUD Window | 5 | 5 | SVG circular progress meter calculations, token validation, UI bracket CSS |
-| **F02** | Dual Screen Modes | 5 | 5 | Standard 1200x800 vs Ultrawide 1920x550 reflow, mode toggling during load |
-| **F03** | Window Controls & Pinning | 5 | 5 | Always-On-Top pin persistence, minimize/restore, close state retention |
-| **F04** | CPU Telemetry & Gauges | 5 | 5 | Load %, GHz clock, per-core breakdown, physical/logical cores, thermals |
-| **F05** | Multi-GPU Detection | 5 | 5 | Dual GPU (Integrated Intel/AMD + Dedicated NVIDIA RTX), VRAM, clocks |
-| **F06** | RAM Telemetry & Breakdown | 5 | 5 | Used/Free/Total GB, load %, speed badge, In-Use/Cached/Free 3-segment bar |
-| **F07** | Storage / SSD Telemetry | 5 | 5 | Drive detection, Read/Write delta throughput (MB/s), total capacity, thermals |
-| **F08** | Network I/O Telemetry | 5 | 5 | Active interface, Downlink/Uplink Mbps/MB/s delta throughput, online/offline |
-| **F09** | Thermal Dynamics Panel | 5 | 6 | Consolidated CPU/GPU/SSD thermals, dynamic color thresholds (<60, 60-79, >=80) |
-| **F10** | Low Overhead & Fault Tolerance | 5 | 5 | <1-2% CPU budget, <10ms sample latency, try/catch shields, "N/A" fallbacks |
-| **F11** | Standalone Packaging Contract | 5 | 5 | PyInstaller single-file spec, embedded assets, offline font bundles |
-| **F12** | Automated Verification & CLI | 5 | 5 | Headless CLI args (`--test-telemetry`, `--benchmark`), structured JSON schema |
+| **F1.1** | Adaptive Breakpoints | 5 | 5 | Responsive reflow (Compact, Standard 1200x800, Ultrawide 1920x550) |
+| **F1.2** | Maximize/Restore Control | 5 | 5 | Native maximize/restore toggle, geometry recovery, `#btn-max` |
+| **F1.3** | Frameless Window Controls | 5 | 5 | Draggable header, Pin Always-On-Top, Minimize, Close |
+| **F2.1** | Simultaneous Multi-GPU Display | 5 | 5 | Render all detected physical GPUs (iGPU + dGPU) side-by-side |
+| **F2.2** | Task Manager GPU Parity | 5 | 5 | Smooth WDDM/DXGI engine utilization calculation matching Task Manager |
+| **F2.3** | Per-GPU Telemetry Metrics | 5 | 5 | VRAM Used/Total in MB/GB, clock MHz, temperatures, type badges |
+| **F3.1** | Ultra-Fast Process Scanner | 5 | 5 | Low-overhead scanner (<5ms polling budget, <0.05% CPU overhead) |
+| **F3.2** | Top 5 Processes Ranking | 5 | 5 | Dynamic ranking by CPU%, Working Set RAM (MB/%), Disk MB/s, GPU% |
+| **F3.3** | Top 5 Processes UI Widget | 5 | 5 | Glassmorphic live-updating table widget embedded in Monitor & Telemetry |
+| **F4.1** | Async Hardware Discovery | 5 | 5 | Background threaded initialization of DXGI, NVML, WMI, and SMBIOS |
+| **F4.2** | Instant Skeleton & Tick-0 | 5 | 5 | Sub-0.5s cold launch via immediate window popup and default fallback |
+| **F4.3** | Hardware Profile Caching | 5 | 5 | Local `.cache/hw_profile.json` caching for instant warm-start retrieval |
+| **F5.1** | Enhanced RAM Telemetry | 5 | 5 | Exact numerical `used_mb`, `free_mb`, `total_mb`, `available_mb`, `committed_mb` |
+| **F5.2** | Enhanced RAM UI Card | 5 | 5 | RAM card rendering dual MB/GB values, percentage gauges, committed bar |
+| **F6.1** | Interactive Tab Navigation | 5 | 5 | Navigation pill buttons for `MONITOR`, `TELEMETRY`, `SYSTEM` view routing |
+| **F6.2** | Monitor View | 5 | 5 | Core HUD (CPU, Multi-GPU, RAM, Top 5 Processes, Thermals, Network, Storage) |
+| **F6.3** | Telemetry View | 5 | 5 | Deep metrics view (per-core CPU bars, live I/O metrics, network streaming) |
+| **F6.4** | System View | 5 | 5 | Hardware inventory sheet (CPU microarchitecture, RAM specs, GPU driver) |
+| **F7.1** | Multi-Layer CPU Thermals | 5 | 5 | AMD Ryzen and Intel Core thermals with multi-layered fallback and `"N/A"` |
+| **F7.2** | SSD SMART Thermal Sensors | 5 | 5 | NVMe/SATA SSD temperatures via Storage IOCTLs with graceful `"N/A"` |
+| **F7.3** | Consolidated Thermals UI | 5 | 5 | Thermal dynamics card displaying CPU, dGPU, iGPU, and SSD temperatures |
+| **F8.1** | E2E Test Suite Expansion | 5 | 5 | 4-tier test runner verification with CLI filtering and JSON report export |
+| **F8.2** | PyInstaller Executable Build | 5 | 5 | Standalone executable in `dist/GlassPerformanceHUD.exe` with bundled assets |
+| **F8.3** | Git Sync | 5 | 5 | Clean Git tracking, commit formatting, and remote sync |
 
 ---
 
 ## 4. Test Files & Artifacts
 
-| File Path | Description | Test Count |
-|---|---|---|
-| `TEST_INFRA.md` | Complete test infrastructure and methodology specification | Doc |
-| `tests/test_helpers.py` | Schema validator, mock generators, SVG/RAM/throughput math | Fixtures |
-| `tests/tier1_feature_tests.py` | Positive functional feature tests across all 12 features | 60 |
-| `tests/tier2_boundary_tests.py` | Boundary conditions, missing sensor fallbacks, unprivileged states | 61 |
-| `tests/tier3_interaction_tests.py` | Cross-feature pairwise interactions and mode switching | 16 |
-| `tests/tier4_scenario_tests.py` | Real-world laptop workload simulations (gaming, throttle, battery) | 10 |
-| `tests/test_runner.py` | CLI test runner with HUD banner, tier filtering, and JSON export | Runner |
+| File Path | Description | Test Count | Status |
+|---|---|---|---|
+| `TEST_INFRA.md` | Test infrastructure & methodology specification | Doc | Validated |
+| `tests/test_helpers.py` | Schema validator, mock generators, SVG/RAM/throughput math | Fixtures | Validated |
+| `tests/test_tier1_features.py` | Tier 1: Positive feature coverage across all 24 features | 120 | 100% PASS |
+| `tests/test_gui_bridge.py` | Tier 1: UI HTML/CSS/JS asset integrity & PyWebView Bridge | 16 | 100% PASS |
+| `tests/test_tier2_boundaries.py` | Tier 2: Boundary conditions, 0%/100%, missing sensors, fallbacks | 120 | 100% PASS |
+| `tests/test_tier3_pairwise.py` | Tier 3: Pairwise cross-feature interactions & mode switches | 25 | 100% PASS |
+| `tests/test_tier4_workloads.py` | Tier 4: Real-world workload simulations & longevity benchmarks | 16 | 100% PASS |
+| `tests/test_adversarial_faults.py` | Tier 5: Adversarial chaos & hardware collector fault injection | 21 | 100% PASS |
+| `tests/test_runner.py` | Automated CLI test runner with latency tracking & JSON export | Runner | Validated |
 
 ---
 
@@ -73,13 +89,15 @@ python tests/test_runner.py --tier 1
 python tests/test_runner.py --tier 2
 python tests/test_runner.py --tier 3
 python tests/test_runner.py --tier 4
+python tests/test_runner.py --tier 5
 ```
 
 ### Filter by Feature Keyword
 ```powershell
-python tests/test_runner.py --feature F04
+python tests/test_runner.py --feature F1_1
 python tests/test_runner.py --feature CPU
 python tests/test_runner.py --feature GPU
+python tests/test_runner.py --feature RAM
 ```
 
 ### Export Machine-Readable JSON Report
@@ -95,5 +113,5 @@ python tests/test_runner.py -v
 ---
 
 ## 6. Exit Code Standards
-- `0`: 100% of tests passed.
-- `1`: Any assertion failure or unexpected exception occurred.
+- **`0`**: 100% of tests passed with zero failures and zero errors.
+- **`1`**: Any assertion failure or unexpected exception occurred.

@@ -23,6 +23,7 @@ import tests.tier2_boundary_tests as t2
 import tests.tier3_interaction_tests as t3
 import tests.tier4_scenario_tests as t4
 import tests.test_adversarial_faults as t5
+import tests.test_adversarial_stress as t5_stress
 import tests.test_gui_bridge as t_gui
 
 
@@ -132,6 +133,13 @@ def get_tier_suites(
     if not tiers or 5 in tiers:
         t5_suite = loader.loadTestsFromModule(t5)
         for test_case in t5_suite:
+            for test in test_case:
+                if not feature_filter or feature_filter.lower() in test.id().lower():
+                    suite.addTest(test)
+                    tier_mapping["Tier 5 (Adversarial & Chaos)"].append(test.id())
+
+        t5_stress_suite = loader.loadTestsFromModule(t5_stress)
+        for test_case in t5_stress_suite:
             for test in test_case:
                 if not feature_filter or feature_filter.lower() in test.id().lower():
                     suite.addTest(test)

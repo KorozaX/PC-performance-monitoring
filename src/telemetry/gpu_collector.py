@@ -1,8 +1,7 @@
 """
 src/telemetry/gpu_collector.py
-Multi-GPU hardware telemetry collector supporting NVIDIA dGPUs (pure ctypes NVML)
-and Intel/AMD/Qualcomm iGPUs & dGPUs (pure ctypes DXGI + Windows PDH).
-Provides unified multi-GPU detection with sub-3ms latency and zero crashing.
+Multi-GPU hardware telemetry collector supporting simultaneous multi-GPU discovery
+via DXGI 1.1 COM interfaces and Task Manager parity WDDM PDH aggregation with EMA smoothing.
 """
 
 import ctypes
@@ -13,6 +12,7 @@ import os
 import re
 import sys
 import threading
+import time
 from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,6 @@ class GUID(ctypes.Structure):
     ]
 
 
-# IID_IDXGIFactory1: {770aae78-f26f-4dba-a829-253c83d1b387}
 IID_IDXGIFactory1 = GUID(
     0x770AAE78,
     0xF26F,
@@ -47,7 +46,6 @@ class LUID(ctypes.Structure):
     _fields_ = [("LowPart", DWORD), ("HighPart", wintypes.LONG)]
 
     def to_pdh_str(self) -> str:
-        """Formats LUID matching Windows PDH instance string: luid_0x00000000_0x00014a7c"""
         return f"0x{self.HighPart & 0xFFFFFFFF:08x}_0x{self.LowPart & 0xFFFFFFFF:08x}".lower()
 
 
@@ -91,16 +89,27 @@ PDH_FMT_LARGE = 0x00000400
 @dataclass
 class GPUAdapterInfo:
     id: int
-    model: str
+    name: str
     vendor: str
     gpu_type: str  # "dedicated" | "integrated"
     luid_str: str
-    dedicated_vram_gb: float
-    shared_vram_gb: float
+    dedicated_bytes: int
+    shared_bytes: int
+    model: str = ""
+    dedicated_vram_gb: float = 0.0
+    shared_vram_gb: float = 0.0
+
+    def __post_init__(self):
+        if not self.model:
+            self.model = self.name
+        if self.dedicated_vram_gb == 0.0 and self.dedicated_bytes > 0:
+            self.dedicated_vram_gb = round(self.dedicated_bytes / (1024**3), 1)
+        if self.shared_vram_gb == 0.0 and self.shared_bytes > 0:
+            self.shared_vram_gb = round(self.shared_bytes / (1024**3), 1)
 
 
 class DXGIEnumerator:
-    """Discovers physical GPUs and extracts LUIDs using DXGI 1.1 COM."""
+    """Discovers all physical GPUs and extracts LUIDs using DXGI 1.1 COM."""
 
     @staticmethod
     def enumerate_adapters() -> List[GPUAdapterInfo]:
@@ -141,7 +150,6 @@ class DXGIEnumerator:
 
                 desc = DXGI_ADAPTER_DESC1()
                 if GetDesc1(pAdapter, ctypes.byref(desc)) == 0:
-                    # Filter software renderers (DXGI_ADAPTER_FLAG_SOFTWARE = 2 or Microsoft Basic Render)
                     is_sw = (desc.Flags & 2) != 0 or desc.VendorId == 0x1414
                     if not is_sw:
                         vendor_map = {
@@ -151,20 +159,22 @@ class DXGIEnumerator:
                             0x5143: "Qualcomm",
                         }
                         vendor = vendor_map.get(desc.VendorId, f"Unknown (0x{desc.VendorId:04X})")
-
-                        # Categorize dedicated vs integrated
-                        is_dedicated = (desc.DedicatedVideoMemory > 1024 * 1024 * 1024) or (
-                            vendor == "NVIDIA"
+                        is_dedicated = (desc.VendorId == 0x10DE) or (
+                            desc.DedicatedVideoMemory >= 1024 * 1024 * 1024
                         )
                         gpu_type = "dedicated" if is_dedicated else "integrated"
+                        adapter_name = desc.Description.strip()
 
                         adapters.append(
                             GPUAdapterInfo(
                                 id=len(adapters),
-                                model=desc.Description.strip(),
+                                name=adapter_name,
                                 vendor=vendor,
                                 gpu_type=gpu_type,
                                 luid_str=desc.AdapterLuid.to_pdh_str(),
+                                dedicated_bytes=int(desc.DedicatedVideoMemory),
+                                shared_bytes=int(desc.SharedSystemMemory),
+                                model=adapter_name,
                                 dedicated_vram_gb=round(desc.DedicatedVideoMemory / (1024**3), 1),
                                 shared_vram_gb=round(desc.SharedSystemMemory / (1024**3), 1),
                             )
@@ -221,10 +231,8 @@ class CTypesNVML:
             self.available = False
 
     def map_adapters(self, adapters: List[GPUAdapterInfo]):
-        """Maps discovered NVIDIA DXGI adapters to NVML device handles."""
         if not self.available or not self.dll:
             return
-
         try:
             get_count = getattr(
                 self.dll, "nvmlDeviceGetCount_v2", getattr(self.dll, "nvmlDeviceGetCount", None)
@@ -234,7 +242,6 @@ class CTypesNVML:
                 "nvmlDeviceGetHandleByIndex_v2",
                 getattr(self.dll, "nvmlDeviceGetHandleByIndex", None),
             )
-
             if not get_count or not get_handle:
                 return
 
@@ -251,43 +258,38 @@ class CTypesNVML:
             logger.debug("NVML handle mapping error: %s", exc)
 
     def query_device(self, gpu_id: int) -> Optional[Dict[str, Any]]:
-        """Queries dynamic metrics for an NVIDIA GPU in < 0.1ms."""
         if not self.available or gpu_id not in self.handles:
             return None
 
         h = self.handles[gpu_id]
         res: Dict[str, Any] = {
             "load_pct": None,
-            "vram_used_gb": None,
-            "vram_total_gb": None,
+            "vram_used_bytes": None,
+            "vram_total_bytes": None,
             "temperature_c": None,
             "freq_mhz": None,
         }
 
         try:
-            # 1. Utilization
             get_util = getattr(self.dll, "nvmlDeviceGetUtilizationRates", None)
             if get_util:
                 u = NVML_UTILIZATION()
                 if get_util(h, ctypes.byref(u)) == 0:
                     res["load_pct"] = float(u.gpu)
 
-            # 2. Memory
             get_mem = getattr(self.dll, "nvmlDeviceGetMemoryInfo", None)
             if get_mem:
                 m = NVML_MEMORY()
                 if get_mem(h, ctypes.byref(m)) == 0:
-                    res["vram_used_gb"] = round(m.used / (1024**3), 1)
-                    res["vram_total_gb"] = round(m.total / (1024**3), 1)
+                    res["vram_used_bytes"] = int(m.used)
+                    res["vram_total_bytes"] = int(m.total)
 
-            # 3. Temperature
             get_temp = getattr(self.dll, "nvmlDeviceGetTemperature", None)
             if get_temp:
                 t = ctypes.c_uint(0)
                 if get_temp(h, 0, ctypes.byref(t)) == 0:
                     res["temperature_c"] = float(t.value)
 
-            # 4. Clock Frequency
             get_clock = getattr(self.dll, "nvmlDeviceGetClockInfo", None)
             if get_clock:
                 c = ctypes.c_uint(0)
@@ -295,7 +297,7 @@ class CTypesNVML:
                     res["freq_mhz"] = int(c.value)
 
         except Exception as exc:
-            logger.debug("NVML query exception (Optimus sleep?): %s", exc)
+            logger.debug("NVML query exception: %s", exc)
 
         return res
 
@@ -353,7 +355,6 @@ class PDHGPUMonitor:
                     ctypes.byref(self.hCounterSMem),
                 )
 
-                # Prime the query
                 self.pdh.PdhCollectQueryData(self.hQuery)
                 self.available = True
         except Exception as exc:
@@ -361,7 +362,6 @@ class PDHGPUMonitor:
             self.available = False
 
     def collect(self) -> Dict[str, Dict[str, Any]]:
-        """Collects GPU engine loads and memory metrics per LUID."""
         data_by_luid: Dict[str, Dict[str, Any]] = {}
         if not self.available or not self.hQuery:
             return data_by_luid
@@ -497,23 +497,27 @@ class PDHGPUMonitor:
 
 class GPUCollector:
     """
-    Main coordinator for Multi-GPU hardware telemetry.
-    Aggregates DXGI, NVML, and PDH data into a list of GPU dictionaries.
+    Unified Multi-GPU Telemetry Coordinator.
+    Performs DXGI 1.1 discovery, WDDM PDH aggregation, and EMA smoothing.
     """
 
-    def __init__(self):
+    def __init__(self, smoothing_alpha: float = 0.5):
         self._lock = threading.Lock()
+        self.alpha = smoothing_alpha
         self.adapters: List[GPUAdapterInfo] = DXGIEnumerator.enumerate_adapters()
+        self._smoothed_loads: Dict[int, float] = {}
 
-        # Fallback if no physical adapters found (e.g. CI or VM)
         if not self.adapters:
             self.adapters = [
                 GPUAdapterInfo(
                     id=0,
-                    model="Generic Display Adapter",
+                    name="Generic Display Adapter",
                     vendor="Unknown",
                     gpu_type="integrated",
                     luid_str="0x00000000_0x00000000",
+                    dedicated_bytes=0,
+                    shared_bytes=0,
+                    model="Generic Display Adapter",
                     dedicated_vram_gb=0.0,
                     shared_vram_gb=0.0,
                 )
@@ -524,12 +528,8 @@ class GPUCollector:
         self.pdh = PDHGPUMonitor()
 
     def collect(self) -> List[Dict[str, Any]]:
-        """
-        Polls dynamic telemetry for ALL detected GPUs.
-        Returns a list of GPU dictionaries matching PROJECT.md interface contract.
-        """
         with self._lock:
-            pdh_data = self.pdh.collect()
+            pdh_data = self.pdh.collect() if getattr(self.pdh, "available", False) else {}
             gpu_list = []
 
             for adapter in self.adapters:
@@ -538,58 +538,80 @@ class GPUCollector:
                     lkey, {"load_pct": 0.0, "dedicated_bytes": 0, "shared_bytes": 0}
                 )
 
-                # Check NVML first for NVIDIA GPUs
                 nvml_entry = None
                 if adapter.vendor == "NVIDIA":
                     try:
                         nvml_entry = self.nvml.query_device(adapter.id)
                     except Exception as exc:
-                        logger.debug("NVML query_device(%d) failed: %s", adapter.id, exc)
-                        nvml_entry = None
+                        logger.debug("NVML query error on GPU %d: %s", adapter.id, exc)
 
-                # 1. Load %
-                if nvml_entry and nvml_entry["load_pct"] is not None:
-                    load_pct = min(100.0, max(0.0, round(float(nvml_entry["load_pct"]), 1)))
-                else:
-                    load_pct = min(100.0, max(0.0, round(float(pdh_entry["load_pct"]), 1)))
+                # 1. Utilization & EMA Smoothing
+                raw_load = 0.0
+                if pdh_entry["load_pct"] > 0:
+                    raw_load = float(pdh_entry["load_pct"])
+                elif nvml_entry and nvml_entry["load_pct"] is not None:
+                    raw_load = float(nvml_entry["load_pct"])
 
-                # 2. Clocks & Temp
+                raw_load = min(100.0, max(0.0, raw_load))
+
+                prev_smooth = self._smoothed_loads.get(adapter.id, raw_load)
+                smoothed_load = self.alpha * raw_load + (1.0 - self.alpha) * prev_smooth
+                if smoothed_load < 0.5:
+                    smoothed_load = 0.0
+                self._smoothed_loads[adapter.id] = smoothed_load
+                load_pct = round(min(100.0, max(0.0, smoothed_load)), 1)
+
+                # 2. Clocks & Temperature
                 if nvml_entry and nvml_entry["freq_mhz"] is not None:
-                    freq_mhz: Union[int, str] = int(nvml_entry["freq_mhz"])
+                    clock_mhz: Union[int, str] = int(nvml_entry["freq_mhz"])
                 else:
-                    freq_mhz = "N/A"
+                    clock_mhz = "N/A"
 
                 if nvml_entry and nvml_entry["temperature_c"] is not None:
                     temp_c: Union[float, str] = round(float(nvml_entry["temperature_c"]), 1)
                 else:
                     temp_c = "N/A"
 
-                # 3. VRAM
+                # 3. VRAM (MB and GB Dual Metrics)
                 if (
                     nvml_entry
-                    and nvml_entry["vram_used_gb"] is not None
-                    and nvml_entry["vram_total_gb"] is not None
+                    and nvml_entry.get("vram_used_bytes") is not None
+                    and nvml_entry.get("vram_total_bytes") is not None
                 ):
-                    vram_used = float(nvml_entry["vram_used_gb"])
-                    vram_tot: Union[float, str] = float(nvml_entry["vram_total_gb"])
+                    used_b = nvml_entry["vram_used_bytes"]
+                    tot_b = nvml_entry["vram_total_bytes"]
                 else:
-                    # Non-NVIDIA or NVML unavailable: use PDH + DXGI
-                    if adapter.dedicated_vram_gb > 0:
-                        vram_used = round(pdh_entry["dedicated_bytes"] / (1024**3), 1)
-                        vram_tot = adapter.dedicated_vram_gb
+                    if adapter.dedicated_bytes > 0:
+                        used_b = pdh_entry["dedicated_bytes"]
+                        tot_b = adapter.dedicated_bytes
                     else:
-                        vram_used = round(pdh_entry["shared_bytes"] / (1024**3), 1)
-                        vram_tot = "N/A"
+                        used_b = pdh_entry["shared_bytes"]
+                        tot_b = adapter.shared_bytes
+
+                vram_used_gb = round(used_b / (1024**3), 1)
+                vram_used_mb = round(used_b / (1024**2), 1)
+
+                if tot_b > 0:
+                    vram_total_gb: Union[float, str] = round(tot_b / (1024**3), 1)
+                    vram_total_mb: Union[float, str] = round(tot_b / (1024**2), 1)
+                else:
+                    vram_total_gb = "N/A"
+                    vram_total_mb = "N/A"
 
                 gpu_dict = {
                     "id": adapter.id,
-                    "type": adapter.gpu_type,
-                    "vendor": adapter.vendor,
+                    "name": adapter.name,
                     "model": adapter.model,
+                    "vendor": adapter.vendor,
+                    "type": adapter.gpu_type,
+                    "utilization_pct": load_pct,
                     "load_pct": load_pct,
-                    "freq_mhz": freq_mhz,
-                    "vram_used_gb": vram_used,
-                    "vram_total_gb": vram_tot,
+                    "clock_mhz": clock_mhz,
+                    "freq_mhz": clock_mhz,
+                    "vram_used_gb": vram_used_gb,
+                    "vram_total_gb": vram_total_gb,
+                    "vram_used_mb": vram_used_mb,
+                    "vram_total_mb": vram_total_mb,
                     "temperature_c": temp_c,
                 }
                 gpu_list.append(gpu_dict)
@@ -597,25 +619,39 @@ class GPUCollector:
             return gpu_list
 
     def poll(self) -> List[Dict[str, Any]]:
-        """Alias for collect()."""
+        return self.collect()
+
+    def get_gpus(self) -> List[Dict[str, Any]]:
         return self.collect()
 
     def get_fallback(self) -> List[Dict[str, Any]]:
-        """Returns safe default struct for all adapters."""
         fallback_list = []
         for adapter in getattr(self, "adapters", []):
+            tot_gb = (
+                round(adapter.dedicated_bytes / (1024**3), 1)
+                if adapter.dedicated_bytes > 0
+                else "N/A"
+            )
+            tot_mb = (
+                round(adapter.dedicated_bytes / (1024**2), 1)
+                if adapter.dedicated_bytes > 0
+                else "N/A"
+            )
             fallback_list.append(
                 {
                     "id": adapter.id,
-                    "type": adapter.gpu_type,
-                    "vendor": adapter.vendor,
+                    "name": adapter.name,
                     "model": adapter.model,
+                    "vendor": adapter.vendor,
+                    "type": adapter.gpu_type,
+                    "utilization_pct": 0.0,
                     "load_pct": 0.0,
+                    "clock_mhz": "N/A",
                     "freq_mhz": "N/A",
                     "vram_used_gb": 0.0,
-                    "vram_total_gb": adapter.dedicated_vram_gb
-                    if adapter.dedicated_vram_gb > 0
-                    else "N/A",
+                    "vram_total_gb": tot_gb,
+                    "vram_used_mb": 0.0,
+                    "vram_total_mb": tot_mb,
                     "temperature_c": "N/A",
                 }
             )
@@ -623,20 +659,24 @@ class GPUCollector:
             fallback_list.append(
                 {
                     "id": 0,
-                    "type": "integrated",
-                    "vendor": "Unknown",
+                    "name": "Generic Display Adapter",
                     "model": "Generic Display Adapter",
+                    "vendor": "Unknown",
+                    "type": "integrated",
+                    "utilization_pct": 0.0,
                     "load_pct": 0.0,
+                    "clock_mhz": "N/A",
                     "freq_mhz": "N/A",
                     "vram_used_gb": 0.0,
                     "vram_total_gb": "N/A",
+                    "vram_used_mb": 0.0,
+                    "vram_total_mb": "N/A",
                     "temperature_c": "N/A",
                 }
             )
         return fallback_list
 
     def shutdown(self):
-        """Cleanly releases all native handles and DLL allocations."""
         with self._lock:
             if self.pdh:
                 self.pdh.close()

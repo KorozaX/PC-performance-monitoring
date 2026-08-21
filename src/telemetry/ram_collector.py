@@ -2,7 +2,7 @@
 src/telemetry/ram_collector.py
 High-performance RAM hardware telemetry collector for Windows.
 Utilizes native Win32 psapi.GetPerformanceInfo / kernel32.GlobalMemoryStatusEx
-and SMBIOS Type 17 firmware table decoding for ultra-low latency (<0.05ms) metrics.
+and SMBIOS Type 17 firmware table decoding for ultra-low latency (<0.05ms) metrics in both MB and GB.
 """
 
 import ctypes
@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional, Tuple
 import psutil
 
 logger = logging.getLogger(__name__)
+
 
 # --- Win32 ctypes struct definitions ---
 class PERFORMANCE_INFORMATION(ctypes.Structure):
@@ -156,6 +157,17 @@ class RAMCollector:
 
     def __init__(self):
         self.type_badge: str = parse_smbios_ram()
+        if "-" in self.type_badge:
+            parts = self.type_badge.split("-")
+            self.memory_type = parts[0]
+            try:
+                self.speed_mhz = int(parts[1])
+            except ValueError:
+                self.speed_mhz = 3200
+        else:
+            self.memory_type = self.type_badge
+            self.speed_mhz = 3200
+
         self._psapi_available = False
         if sys.platform == "win32":
             try:
@@ -168,7 +180,7 @@ class RAMCollector:
     def collect(self) -> Dict[str, Any]:
         """
         Polls RAM dynamic telemetry in < 0.05ms.
-        Returns a dictionary matching PROJECT.md interface contract.
+        Returns full numerical MB and GB metrics dictionary adhering to PROJECT.md contract.
         """
         if self._psapi_available:
             try:
@@ -180,10 +192,19 @@ class RAMCollector:
                     avail_bytes = perf_info.PhysicalAvailable * page_size
                     cache_bytes = perf_info.SystemCache * page_size
                     used_bytes = max(0, total_bytes - avail_bytes)
+                    committed_bytes = perf_info.CommitTotal * page_size
+                    commit_limit_bytes = perf_info.CommitLimit * page_size
 
                     total_gb = round(total_bytes / (1024**3), 1)
                     used_gb = round(used_bytes / (1024**3), 1)
                     free_gb = round(avail_bytes / (1024**3), 1)
+
+                    total_mb = round(total_bytes / (1024**2), 1)
+                    used_mb = round(used_bytes / (1024**2), 1)
+                    free_mb = round(avail_bytes / (1024**2), 1)
+                    available_mb = free_mb
+                    committed_mb = round(committed_bytes / (1024**2), 1)
+                    commit_limit_mb = round(commit_limit_bytes / (1024**2), 1)
 
                     if total_bytes > 0:
                         load_pct = round((used_bytes / total_bytes) * 100.0, 1)
@@ -201,9 +222,18 @@ class RAMCollector:
 
                     return {
                         "load_pct": load_pct,
+                        "utilization_pct": load_pct,
                         "used_gb": used_gb,
                         "free_gb": free_gb,
                         "total_gb": total_gb,
+                        "used_mb": used_mb,
+                        "free_mb": free_mb,
+                        "total_mb": total_mb,
+                        "available_mb": available_mb,
+                        "committed_mb": committed_mb,
+                        "commit_limit_mb": commit_limit_mb,
+                        "memory_type": self.memory_type,
+                        "speed_mhz": self.speed_mhz,
                         "type_badge": self.type_badge,
                         "distribution": {
                             "in_use_pct": in_use_pct,
@@ -220,6 +250,10 @@ class RAMCollector:
             total_gb = round(vm.total / (1024**3), 1)
             used_gb = round(vm.used / (1024**3), 1)
             free_gb = round(vm.available / (1024**3), 1)
+            total_mb = round(vm.total / (1024**2), 1)
+            used_mb = round(vm.used / (1024**2), 1)
+            free_mb = round(vm.available / (1024**2), 1)
+            available_mb = free_mb
             load_pct = round(vm.percent, 1)
 
             cached_bytes = getattr(vm, "cached", 0)
@@ -229,11 +263,29 @@ class RAMCollector:
                 cached_pct = max(0, 100 - in_use_pct)
             free_pct = max(0, 100 - in_use_pct - cached_pct)
 
+            # Swap / commit fallback
+            try:
+                sm = psutil.swap_memory()
+                committed_mb = round((vm.used + sm.used) / (1024**2), 1)
+                commit_limit_mb = round((vm.total + sm.total) / (1024**2), 1)
+            except Exception:
+                committed_mb = used_mb
+                commit_limit_mb = total_mb
+
             return {
                 "load_pct": load_pct,
+                "utilization_pct": load_pct,
                 "used_gb": used_gb,
                 "free_gb": free_gb,
                 "total_gb": total_gb,
+                "used_mb": used_mb,
+                "free_mb": free_mb,
+                "total_mb": total_mb,
+                "available_mb": available_mb,
+                "committed_mb": committed_mb,
+                "commit_limit_mb": commit_limit_mb,
+                "memory_type": self.memory_type,
+                "speed_mhz": self.speed_mhz,
                 "type_badge": self.type_badge,
                 "distribution": {
                     "in_use_pct": in_use_pct,
@@ -252,9 +304,18 @@ class RAMCollector:
         """Returns safe default struct in case of unexpected failure."""
         return {
             "load_pct": 0.0,
+            "utilization_pct": 0.0,
             "used_gb": 0.0,
             "free_gb": 0.0,
             "total_gb": 0.0,
+            "used_mb": 0.0,
+            "free_mb": 0.0,
+            "total_mb": 0.0,
+            "available_mb": 0.0,
+            "committed_mb": 0.0,
+            "commit_limit_mb": 0.0,
+            "memory_type": getattr(self, "memory_type", "DDR4"),
+            "speed_mhz": getattr(self, "speed_mhz", 3200),
             "type_badge": getattr(self, "type_badge", "DDR4"),
             "distribution": {
                 "in_use_pct": 0,
