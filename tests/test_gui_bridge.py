@@ -168,7 +168,7 @@ class TestWindowManager(unittest.TestCase):
         self.assertTrue(kwargs["on_top"])
         self.assertEqual(kwargs["width"], 1200)
         self.assertEqual(kwargs["height"], 800)
-        self.assertEqual(kwargs["background_color"], "#00000000")
+        self.assertEqual(kwargs["background_color"], "#000000")
         self.assertEqual(bridge.window, mock_win)
         engine.stop()
 

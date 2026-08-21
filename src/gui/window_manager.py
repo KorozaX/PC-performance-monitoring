@@ -69,7 +69,7 @@ def create_hud_window(
         easy_drag=True,
         on_top=pinned,
         min_size=(600, 400),
-        background_color="#00000000",
+        background_color="#000000",
     )
 
     bridge_api.set_window(window)
